@@ -1,0 +1,11 @@
+# Lokale configuratie en geheimen
+.env
+.env.*
+!.env.example
+
+# Lokale tijdelijke bestanden
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+Desktop.ini
