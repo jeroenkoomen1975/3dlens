@@ -9,3 +9,8 @@
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Hostinger credentials and private model data
+/3dlens-private/config.local.php
+/3dlens-private/storage/
+/work/

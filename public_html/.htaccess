@@ -1,0 +1,7 @@
+Options -Indexes
+DirectoryIndex index.php
+
+# Defense in depth. The real private files must be outside public_html.
+<FilesMatch "(?i)(^\.|\.(sql|log|env|bak|zip|forge|stl|3mf|ctb|cbddlp|phz|photon|pws|pw0|pwmx|pwms|pwmo|pwx|sl1|sl1s)$)">
+    Require all denied
+</FilesMatch>

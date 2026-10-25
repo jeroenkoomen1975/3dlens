@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS lens_users (
+    id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS lens_collections (
+    id VARCHAR(80) CHARACTER SET ascii COLLATE ascii_bin NOT NULL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS lens_files (
+    id VARCHAR(80) CHARACTER SET ascii COLLATE ascii_bin NOT NULL PRIMARY KEY,
+    collection_id VARCHAR(80) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    name VARCHAR(255) NOT NULL,
+    byte_size BIGINT UNSIGNED NOT NULL,
+    sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
+    storage_key CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
+    metadata MEDIUMTEXT NOT NULL,
+    added BIGINT UNSIGNED NOT NULL,
+    CONSTRAINT lens_files_collection_fk FOREIGN KEY (collection_id)
+        REFERENCES lens_collections(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS lens_login_attempts (
+    bucket CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL PRIMARY KEY,
+    attempts INT UNSIGNED NOT NULL DEFAULT 1,
+    window_start BIGINT UNSIGNED NOT NULL,
+    INDEX lens_attempts_window (window_start)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
