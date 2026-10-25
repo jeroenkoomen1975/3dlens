@@ -4,6 +4,7 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) {
     http_response_code(404);
     exit;
 }
+require_once __DIR__ . '/model-storage.php';
 
 const MODEL_EXTENSIONS = ['stl', '3mf', 'ctb', 'cbddlp', 'phz', 'photon', 'pws', 'pw0', 'pwmx', 'pwms', 'pwmo', 'pwx', 'sl1', 'sl1s'];
 
@@ -147,6 +148,7 @@ function save_model(array $metadata, ?array $upload): array
 {
     $meta = validated_metadata($metadata);
     $newPath = null;
+    $commitAttempted = false;
     try {
         write_lock();
         if ($meta['collectionId'] !== null) {
@@ -182,10 +184,14 @@ function save_model(array $metadata, ?array $upload): array
             }
             $key = bin2hex(random_bytes(32));
             $newPath = stored_file_path($key);
-            if (!move_uploaded_file($upload['tmp_name'], $newPath)) {
-                throw new HttpError(503, 'Het bestand kon niet worden opgeslagen.');
+            if (od_active()) {
+                od_upload($key, $meta['name'], $upload['tmp_name'], $size, $hash);
+            } else {
+                if (!move_uploaded_file($upload['tmp_name'], $newPath)) {
+                    throw new HttpError(503, 'Het bestand kon niet worden opgeslagen.');
+                }
+                chmod($newPath, 0600);
             }
-            chmod($newPath, 0600);
             $insert = db()->prepare('INSERT INTO lens_files (id, collection_id, name, byte_size, sha256, storage_key, metadata, added) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
             $insert->execute([$meta['id'], $meta['collectionId'], $meta['name'], $size, $hash, $key,
                 json_encode($meta, JSON_THROW_ON_ERROR), $meta['added']]);
@@ -193,14 +199,18 @@ function save_model(array $metadata, ?array $upload): array
         $result = db()->prepare('SELECT * FROM lens_files WHERE id = ?');
         $result->execute([$meta['id']]);
         $saved = file_metadata($result->fetch());
+        $commitAttempted = true;
         db()->commit();
         return $saved;
     } catch (Throwable $error) {
         if (db()->inTransaction()) {
             db()->rollBack();
         }
-        if ($newPath !== null && is_file($newPath)) {
-            unlink($newPath);
+        // An interrupted commit can have succeeded on the database server.
+        // Retain the upload rather than risk deleting a committed model.
+        if ($newPath !== null && !$commitAttempted) {
+            try { model_remove($key); }
+            catch (Throwable) { error_log('3DLens: failed-upload cleanup requires attention.'); }
         }
         throw $error;
     }
@@ -208,14 +218,14 @@ function save_model(array $metadata, ?array $upload): array
 
 function delete_records(string $store, ?string $id): void
 {
-    $paths = [];
+    $keys = [];
     try {
         write_lock();
         if ($store === 'files') {
             $read = db()->prepare('SELECT storage_key FROM lens_files' . ($id === null ? '' : ' WHERE id = ?'));
             $read->execute($id === null ? [] : [$id]);
             foreach ($read->fetchAll() as $row) {
-                $paths[] = stored_file_path($row['storage_key']);
+                $keys[] = $row['storage_key'];
             }
         }
         $table = $store === 'files' ? 'lens_files' : 'lens_collections';
@@ -230,9 +240,7 @@ function delete_records(string $store, ?string $id): void
     }
     // Only remove bytes after a successful database commit. Interrupted cleanup can
     // leave an inaccessible orphan; it cannot make remaining records unreadable.
-    foreach ($paths as $path) {
-        if (is_file($path) && !unlink($path)) {
-            error_log('3DLens: orphaned private file requires cleanup.');
-        }
+    foreach ($keys as $key) {
+        model_remove($key);
     }
 }

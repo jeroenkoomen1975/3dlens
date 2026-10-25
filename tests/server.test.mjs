@@ -53,7 +53,7 @@ test('PHP/MySQL login, private downloads and storage permissions', {
       assert.ok(csrf);
       const headers = page.headers.getSetCookie().join(';');
       assert.match(headers, /HttpOnly/i);
-      assert.match(headers, /SameSite=Strict/i);
+      assert.match(headers, /SameSite=Lax/i);
       if (base.protocol === 'https:') assert.match(headers, /Secure/i);
       const before = cookie;
       const body = new URLSearchParams({

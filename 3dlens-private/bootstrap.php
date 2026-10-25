@@ -15,7 +15,7 @@ final class HttpError extends RuntimeException
 
 function is_api(): bool
 {
-    return basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'api.php';
+    return in_array(basename($_SERVER['SCRIPT_FILENAME'] ?? ''), ['api.php', 'onedrive-migrate.php'], true);
 }
 
 set_exception_handler(function (Throwable $error): void {
@@ -76,7 +76,9 @@ session_set_cookie_params([
     'path' => '/',
     'secure' => $https,
     'httponly' => true,
-    'samesite' => 'Strict',
+    // Lax allows the top-level Microsoft OAuth callback. All mutations still
+    // require CSRF; the callback additionally validates state and PKCE.
+    'samesite' => 'Lax',
 ]);
 session_start();
 
@@ -175,7 +177,11 @@ function input_id(mixed $value): string
 
 function storage_path(): string
 {
-    $path = config('storage_path');
+    return private_directory(config('storage_path'));
+}
+
+function private_directory(mixed $path): string
+{
     if (!is_string($path) || $path === '') {
         throw new HttpError(503, 'De opslagmap is niet ingesteld.');
     }

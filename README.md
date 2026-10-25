@@ -38,7 +38,7 @@ public_html/          Documentroot van je domein of subdomein
 
 MySQL bewaart gebruikersnaam, wachtwoordhash, collecties, tags, omschrijvingen, miniaturen, bestandsnamen en modelstatistieken. De originele 3D-bestanden staan als willekeurig benoemde `.bin`-bestanden buiten `public_html`. Downloads lopen via de geauthenticeerde API. De server berekent zelf de SHA-256 en bestandsgrootte; dubbele inhoud wordt geweigerd.
 
-Schrijven en uitloggen vereisen een sessie en CSRF-token. Cookies zijn HttpOnly en SameSite=Strict, en Secure op HTTPS. Sessies verlopen standaard na twee uur inactiviteit en uiterlijk na twaalf uur. Inlogpogingen worden per IP en gebruikersnaam begrensd in de database, ook over meerdere browsersessies.
+Schrijven en uitloggen vereisen een sessie en CSRF-token. Cookies zijn HttpOnly en SameSite=Lax (voor de terugkeer vanaf Microsoft; schrijfacties blijven met CSRF beveiligd), en Secure op HTTPS. Sessies verlopen standaard na twee uur inactiviteit en uiterlijk na twaalf uur. Inlogpogingen worden per IP en gebruikersnaam begrensd in de database, ook over meerdere browsersessies.
 
 Grote modellen worden pas geladen wanneer een preview of backup ze nodig heeft. Extra geladen modeldata wordt gecachet tot 128 MiB; net geïmporteerde bestanden en de 3D-viewer gebruiken daarnaast geheugen. Een volledige `.forge`-backup wordt nog in de browser opgebouwd en kan voor heel grote archieven veel geheugen vragen.
 
@@ -73,8 +73,18 @@ Controleer in een echte browser ook STL/3MF/SLA-import, previews, tags, omschrij
 - JavaScript-syntaxis van de viewer en opslagmodule gecontroleerd.
 - Op Hostinger gecontroleerd: databaseverbinding, aanmaken eigenaarsaccount, inloggen en openen van het lege archief zonder browserfouten. De installatiepagina is na het aanmaken van het account geblokkeerd.
 - Na het verlopen van de sessie gecontroleerd: archief verwijst naar login; bestandenlijst, collectielijst en modeldownload geven uitsluitend de melding om opnieuw in te loggen.
-- Uploaden, 3D-preview, bewerken en backup/restore zijn **nog niet met een model op de hosting getest**. Een volledige PHP-lint en geautomatiseerde serverintegratietest zijn niet uitgevoerd.
+- Uploaden, 3D-preview, bewerken en backup/restore zijn **nog niet met een model op de hosting getest**. Alle PHP-bestanden zijn nu syntactisch gecontroleerd met PHP 8.3. De geautomatiseerde serverintegratietest is nog niet uitgevoerd.
 - De serverintegratietest is voorbereid en wordt zonder expliciete testomgeving overgeslagen.
-- De website is online; het archief is nog leeg. Nog niet naar GitHub gepusht.
+- De website is online. Bij de eerste oplevering was het archief leeg; de gebruiker heeft inmiddels gemeld dat de applicatie werkt. Nog niet naar GitHub gepusht.
 
 Rond de server- en browsercontroles op een testsubdomein af voordat je je echte archief importeert.
+
+## OneDrive (persoonlijk Microsoft-account)
+
+De optionele koppeling gebruikt Microsoft Graph met `Files.ReadWrite.AppFolder` en `offline_access`. Alleen de eigen appmap wordt toegankelijk. MySQL bewaart metadata; modelbytes gaan na koppeling naar OneDrive. Er ontstaan geen openbare deellinks. Downloads blijven achter de bestaande 3DLens-login en worden via een tijdelijk serverbestand volledig op grootte en SHA-256 gecontroleerd.
+
+De OneDrive-code is op Hostinger geplaatst. Zonder Microsoft-toestemming is de koppeling nog niet actief; de instellingen achter login en een echte cloud-upload moeten nog worden gecontroleerd. Zie [ONEDRIVE.md](ONEDRIVE.md) voor installatie, appregistratie en migratie. Geen schemawijziging nodig. Zonder koppeling blijft lokale opslag werken. PHP cURL en tijdelijke schijfruimte voor één model zijn vereist. De bestaande app-limiet van 200 MiB blijft gelden.
+
+`3dlens-private/connections/` bevat geheime appinstellingen en vernieuwbare tokens; deze map wordt uitgesloten van Git en installatiepakketten. De bestaande `storage/` bevat ook kleine OneDrive-verwijzingen: neem die samen met database en verbindingen mee in een beveiligde hostingbackup. Een database-export alleen is onvoldoende.
+
+Controleer de offline foutafhandeling met `php tests/onedrive.test.php`. Deze test gebruikt tijdelijke voorbeeldgegevens zonder Microsoft-verzoeken. PHP-lint, deze offline tests, tien Node-opslagtests en JavaScript-syntaxiscontroles zijn geslaagd. Een volledige Microsoft-koppeling en cloudmigratie zijn pas te testen na toestemming van de eigenaar.

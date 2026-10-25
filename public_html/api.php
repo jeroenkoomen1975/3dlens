@@ -24,17 +24,13 @@ if ($method === 'GET') {
             throw new HttpError(422, 'Dit bestand is niet beschikbaar.');
         }
         $id = input_id($_GET['id']);
-        $query = db()->prepare('SELECT storage_key, name, byte_size FROM lens_files WHERE id = ?');
+        $query = db()->prepare('SELECT storage_key, name, byte_size, sha256 FROM lens_files WHERE id = ?');
         $query->execute([$id]);
         $file = $query->fetch();
         if (!$file) {
             throw new HttpError(404, 'Dit bestand bestaat niet meer.');
         }
-        $path = stored_file_path($file['storage_key']);
-        $handle = @fopen($path, 'rb');
-        if ($handle === false) {
-            throw new HttpError(503, 'Het opgeslagen bestand is tijdelijk niet beschikbaar.');
-        }
+        $handle = model_open($file);
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="model.' . strtolower(pathinfo($file['name'], PATHINFO_EXTENSION))
             . '"; filename*=UTF-8\'\'' . rawurlencode($file['name']));

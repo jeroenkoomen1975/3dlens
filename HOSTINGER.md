@@ -89,7 +89,7 @@ Maak daarna `setup_key` in de privéconfiguratie leeg (`'setup_key' => ''`). Je 
 7. Log uit en gebruik de terugknop. De website moet opnieuw om inloggen vragen. Een model-URL moet zonder sessie geblokkeerd zijn.
 8. Controleer dat de privémap niet publiek bereikbaar is. Alleen de documentroot mag worden gepubliceerd.
 
-PHP-syntaxis, de MySQL-integratie en browserpreviews moeten op deze testomgeving nog worden gecontroleerd; die controles konden niet op de ontwikkelcomputer worden uitgevoerd. De repository bevat hiervoor een serverintegratietest; de README beschrijft hoe je die draait.
+PHP-syntaxis is inmiddels gecontroleerd. De volledige MySQL-integratie en modelpreviews moeten nog op een testomgeving worden gecontroleerd. De repository bevat hiervoor een serverintegratietest; de README beschrijft hoe je die draait.
 
 ## 8. Zet je bestaande archief over
 
@@ -114,6 +114,10 @@ Er is nog geen e-mailfunctie voor wachtwoordherstel. Bewaar je wachtwoord in een
 
 Uitgevoerd: subdomein `koomen` aangemaakt, doelpakket geüpload, privébestanden buiten `public_html` geplaatst en webbestanden in `public_html/koomen` geplaatst. Database en gebruiker `u179310343_3dlens`, privéconfiguratie en eigenaarsaccount zijn ingericht. Inloggen en het lege archief zijn gecontroleerd; de browser meldde geen fouten. De installatiepagina is geblokkeerd. Na sessieverloop verwijzen pagina's naar de login en weigeren de bestandenlijst, collectielijst en modeldownload gegevens te tonen.
 
-Het archief is nog leeg. Test eerst één klein model voordat je je oude backup importeert: upload, preview, metadata bewerken, herladen, downloaden en backup/restore moeten nog met een model worden getest. De geautomatiseerde serverintegratietest en volledige PHP-lint zijn niet uitgevoerd.
+Het archief is nog leeg. Test eerst één klein model voordat je je oude backup importeert: upload, preview, metadata bewerken, herladen, downloaden en backup/restore moeten nog met een model worden getest. De PHP-lint is inmiddels geslaagd; de geautomatiseerde serverintegratietest is nog niet uitgevoerd.
 
 De tijdelijke uitgepakte map en het installatiearchief staan buiten `public_html` en bevatten geen echte credentials of modellen. Een aanvullende controlepagina kon wegens verlopen Bestandsbeheer-toegang niet worden geplaatst en maakt geen deel uit van de oplevering. De toegangscontrole is vervolgens rechtstreeks via de browser uitgevoerd.
+
+## Optionele OneDrive-opslag
+
+Zie [ONEDRIVE.md](ONEDRIVE.md). De OneDrive-update behoudt de database, lokale modellen en `config.local.php`. Publiceer beide nieuwe privémodules voordat je `repository.php` bijwerkt. De koppeling wordt pas actief na de Microsoft-toestemming van de eigenaar.

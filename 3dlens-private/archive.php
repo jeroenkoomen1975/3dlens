@@ -2184,6 +2184,7 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
       <div class="brand-sub" id="brand-sub-text">3D Archief // v1.3</div>
     </div>
     <div class="header-actions">
+      <a href="onedrive.php" class="btn" style="text-decoration:none">OneDrive</a>
       <form action="logout.php" method="post" style="display:inline-flex">
         <input type="hidden" name="csrf" value="<?= h($csrf) ?>" />
         <button class="btn" type="submit">Uitloggen</button>

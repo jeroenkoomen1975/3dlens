@@ -13,4 +13,5 @@ Desktop.ini
 # Hostinger credentials and private model data
 /3dlens-private/config.local.php
 /3dlens-private/storage/
+/3dlens-private/connections/
 /work/
