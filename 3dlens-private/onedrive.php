@@ -166,6 +166,37 @@ function od_http(string $method, string $url, array $headers = [], mixed $body =
     return ['status' => $status, 'data' => is_array($data) ? $data : []];
 }
 
+/** Show only bounded Microsoft codes and our own text, never remote error descriptions. */
+function od_token_error(array $data): string
+{
+    $code = '';
+    $candidate = is_array($data['error_codes'] ?? null) ? ($data['error_codes'][0] ?? null) : null;
+    if ((is_int($candidate) || is_string($candidate)) && preg_match('/\A[0-9]{1,10}\z/', (string) $candidate)) {
+        $code = (string) $candidate;
+    } elseif (is_string($data['error_description'] ?? null) &&
+        preg_match('/\bAADSTS([0-9]{1,10})\b/', $data['error_description'], $match)) {
+        $code = $match[1];
+    }
+    $message = match ($code) {
+        '7000215', '70002' => 'De client secret past niet bij deze app. Vul de Value in, niet de Secret ID, van dezelfde app als de Application (client) ID.',
+        '7000222' => 'De client secret is verlopen. Maak bij dezelfde Microsoft-app een nieuwe secret en sla de nieuwe Value op in 3DLens.',
+        '700016', '700011' => 'Microsoft kan deze appregistratie niet vinden. Controleer de Application (client) ID en ondersteuning voor persoonlijke Microsoft-accounts.',
+        '7000218' => 'Microsoft ontvangt geen geldige appreferentie. Controleer de client secret en registreer het omleidingsadres als Web.',
+        '700025', '9002326' => 'De app is als publieke app of SPA ingesteld. Registreer het omleidingsadres als Web voor deze serverkoppeling.',
+        '50011' => 'Het omleidingsadres wijkt af. Stel bij Web exact ' . OD_REDIRECT_URI . ' in.',
+        '65001' => 'Microsoft heeft de benodigde toestemming nog niet bevestigd. Start OneDrive koppelen opnieuw en controleer de gevraagde machtigingen.',
+        '70000', '54005' => 'De Microsoft-bevestiging is verlopen, ongeldig of al gebruikt. Start opnieuw via OneDrive koppelen; vernieuw de terugkeerpagina niet.',
+        default => match ($data['error'] ?? '') {
+            'invalid_client' => 'Microsoft accepteert de appgegevens niet. Controleer de Application (client) ID en de client secret Value van dezelfde app.',
+            'invalid_grant' => 'De Microsoft-bevestiging is ongeldig of verlopen. Start opnieuw via OneDrive koppelen.',
+            'invalid_scope' => 'Microsoft accepteert de machtigingen niet. Controleer Files.ReadWrite.AppFolder en offline_access.',
+            'unauthorized_client' => 'Deze app mag dit accounttype niet koppelen. Controleer ondersteuning voor persoonlijke Microsoft-accounts en het Web-omleidingsadres.',
+            default => 'Microsoft kon de koppeling niet bevestigen. Controleer je appinstellingen en koppel opnieuw.',
+        },
+    };
+    return ($code !== '' ? 'Microsoft (AADSTS' . $code . '): ' : '') . $message;
+}
+
 function od_token_exchange(array $fields): array
 {
     $settings = od_settings();
@@ -173,7 +204,7 @@ function od_token_exchange(array $fields): array
     $response = od_http('POST', OD_LOGIN . 'token', ['Content-Type: application/x-www-form-urlencoded'],
         http_build_query($fields + ['client_id' => $settings['client_id'], 'client_secret' => $settings['client_secret']]));
     if ($response['status'] !== 200 || empty($response['data']['access_token'])) {
-        throw new HttpError(503, 'Microsoft kon de koppeling niet bevestigen. Controleer je appinstellingen en koppel opnieuw.');
+        throw new HttpError(503, od_token_error($response['data']));
     }
     return $response['data'];
 }

@@ -42,6 +42,13 @@ function cleanup_fixture(string $path): void {
     rmdir($path);
 }
 try {
+    $remoteSecret = 'never-display-this-secret-or-token';
+    $tokenError = od_token_error(['error_codes' => [7000215], 'error_description' => $remoteSecret]);
+    expect(str_contains($tokenError, 'AADSTS7000215') && str_contains($tokenError, 'Value') && !str_contains($tokenError, $remoteSecret), 'Token failures explain invalid secrets without reflecting remote sensitive data');
+    expect(str_contains(od_token_error(['error_description' => 'AADSTS7000222: ' . $remoteSecret]), 'verlopen'), 'Expired Microsoft credentials receive a specific explanation');
+    $unsafeError = od_token_error(['error_codes' => ['<script>'], 'error' => $remoteSecret, 'error_description' => $remoteSecret]);
+    expect(!str_contains($unsafeError, '<script>') && !str_contains($unsafeError, $remoteSecret), 'Unknown Microsoft errors never expose raw remote fields');
+    expect(str_contains(od_token_error(['error' => 'invalid_grant']), 'Start opnieuw'), 'Expired authorization codes prompt a fresh connection');
     $gatePath = $fixture . '/recovery.local.json';
     rejects(fn() => recovery_gate($gatePath), 404, 'Account recovery is disabled without a private gate');
     $resetKey = str_repeat('a', 64);

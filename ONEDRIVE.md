@@ -40,3 +40,7 @@ Verloopt de client secret, vernieuw die rechtstreeks bij Microsoft en vul de nie
 Geslaagd: PHP-syntaxis op alle bestanden, offline OAuth- en opslagfouttests, tien Node-tests, JavaScript-syntaxis en controle van pakketinhoud zonder credentials. Nog nodig: echte Microsoft-toestemming, cloud-upload/download en migratie op de hosting. De serverintegratietest vereist een aparte wegwerpdatabase en is niet op het productiearchief uitgevoerd.
 
 Microsoft-documentatie: https://learn.microsoft.com/en-us/graph/onedrive-sharepoint-appfolder en https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow.
+
+## Microsoft weigert de tokenuitwisseling
+
+De foutmelding toont uitsluitend een gecontroleerde AADSTS-code en eigen uitleg; nooit de externe fouttekst, tokens of secret. Start na het wijzigen van appinstellingen opnieuw via OneDrive koppelen. Vernieuw de callback niet: de Microsoft-code is eenmalig. AADSTS7000215 duidt op een onjuiste secret of een client-ID/secret van verschillende apps; 7000222 op een verlopen secret. De offline tests controleren ook dat geheime externe foutvelden niet worden getoond.
