@@ -42,6 +42,11 @@ function cleanup_fixture(string $path): void {
     rmdir($path);
 }
 try {
+    $signedUrl = 'https://example.files.1drv.com/content?auth=fake-test-signature';
+    expect(od_validate_download_url($signedUrl) === $signedUrl, 'Microsoft HTTPS download redirects retain the signed URL unchanged');
+    foreach (['', 'http://example.com/file', 'https://user:password@example.com/file', "https://example.com/file\r\nHeader: value", '/relative/file', ['invalid']] as $invalidUrl) {
+        rejects(fn() => od_validate_download_url($invalidUrl), 503, 'Invalid download redirects are rejected');
+    }
     $remoteSecret = 'never-display-this-secret-or-token';
     $tokenError = od_token_error(['error_codes' => [7000215], 'error_description' => $remoteSecret]);
     expect(str_contains($tokenError, 'AADSTS7000215') && str_contains($tokenError, 'Value') && !str_contains($tokenError, $remoteSecret), 'Token failures explain invalid secrets without reflecting remote sensitive data');

@@ -138,6 +138,7 @@ function od_http(string $method, string $url, array $headers = [], mixed $body =
     }
     $curl = curl_init($url);
     $response = '';
+    $location = '';
     curl_setopt_array($curl, [
         CURLOPT_CUSTOMREQUEST => $method,
         CURLOPT_HTTPHEADER => $headers,
@@ -145,6 +146,15 @@ function od_http(string $method, string $url, array $headers = [], mixed $body =
         CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
         CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_HEADERFUNCTION => function ($handle, string $line) use (&$location): int {
+            if (preg_match('/\AHTTP\/\S+\s+[0-9]{3}\b/i', $line)) $location = '';
+            elseif (stripos($line, 'Location:') === 0) {
+                $value = trim(substr($line, 9));
+                if (strlen($value) > 8192) return 0;
+                $location = $value;
+            }
+            return strlen($line);
+        },
         CURLOPT_WRITEFUNCTION => function ($handle, string $chunk) use (&$response): int {
             if (strlen($response) + strlen($chunk) > 2 * 1024 * 1024) return 0;
             $response .= $chunk;
@@ -163,7 +173,7 @@ function od_http(string $method, string $url, array $headers = [], mixed $body =
     curl_close($curl);
     if ($ok === false) throw new HttpError(503, 'De verbinding met OneDrive is onderbroken. Probeer opnieuw.');
     $data = $response === '' ? [] : json_decode($response, true);
-    return ['status' => $status, 'data' => is_array($data) ? $data : []];
+    return ['status' => $status, 'data' => is_array($data) ? $data : [], 'location' => $location];
 }
 
 /** Show only bounded Microsoft codes and our own text, never remote error descriptions. */
@@ -226,13 +236,16 @@ function od_access_token(bool $refresh = false): string
     });
 }
 
-function od_graph(string $method, string $path, mixed $body = null, string $type = 'application/json'): array
+function od_graph(string $method, string $path, mixed $body = null, string $type = 'application/json', bool $downloadRedirect = false): array
 {
     if (!str_starts_with($path, '/')) throw new HttpError(503, 'Ongeldig OneDrive-pad.');
     for ($attempt = 0; $attempt < 2; $attempt++) {
         $token = od_access_token($attempt > 0);
         $response = od_http($method, OD_GRAPH . $path, ['Authorization: Bearer ' . $token, 'Content-Type: ' . $type], $body);
         if ($response['status'] !== 401) break;
+    }
+    if ($downloadRedirect && $method === 'GET' && str_ends_with($path, '/content') && $response['status'] === 302) {
+        return ['@microsoft.graph.downloadUrl' => od_validate_download_url($response['location'] ?? '')];
     }
     if ($response['status'] === 404) throw new HttpError(404, 'Het model is niet meer beschikbaar in OneDrive.');
     if ($response['status'] === 429) throw new HttpError(503, 'OneDrive is tijdelijk druk. Wacht even en probeer opnieuw.');
@@ -303,15 +316,24 @@ function od_item_path(array $reference): string
     return '/drives/' . rawurlencode($reference['drive_id']) . '/items/' . rawurlencode($reference['item_id']);
 }
 
+function od_validate_download_url(mixed $url): string
+{
+    $parsed = is_string($url) ? parse_url($url) : false;
+    if (!$parsed || ($parsed['scheme'] ?? '') !== 'https' || empty($parsed['host']) ||
+        isset($parsed['user']) || isset($parsed['pass']) || preg_match('/[\x00-\x20\x7f]/', $url)) {
+        throw new HttpError(503, 'OneDrive heeft geen geldig downloadadres gegeven.');
+    }
+    return $url;
+}
+
 /** Download into an automatically removed temporary file, never a permanent model copy. */
 function od_download(array $reference): mixed
 {
-    $item = od_graph('GET', od_item_path($reference) . '?$select=id,size,@microsoft.graph.downloadUrl');
-    $url = $item['@microsoft.graph.downloadUrl'] ?? '';
-    $parsed = is_string($url) ? parse_url($url) : false;
-    if (!$parsed || ($parsed['scheme'] ?? '') !== 'https' || empty($parsed['host']) || isset($parsed['user']) || isset($parsed['pass'])) {
-        throw new HttpError(503, 'OneDrive heeft geen geldig downloadadres gegeven.');
-    }
+    // /content provides the documented Location redirect even when the metadata
+    // response omits its temporary downloadUrl annotation. Do not follow this
+    // authenticated Graph request: the signed download uses a separate client.
+    $item = od_graph('GET', od_item_path($reference) . '/content', null, 'application/json', true);
+    $url = od_validate_download_url($item['@microsoft.graph.downloadUrl'] ?? '');
     $file = tmpfile();
     if (!$file) throw new HttpError(503, 'Er is geen tijdelijke ruimte beschikbaar voor de modeldownload.');
     $hash = hash_init('sha256');

@@ -44,3 +44,7 @@ Microsoft-documentatie: https://learn.microsoft.com/en-us/graph/onedrive-sharepo
 ## Microsoft weigert de tokenuitwisseling
 
 De foutmelding toont uitsluitend een gecontroleerde AADSTS-code en eigen uitleg; nooit de externe fouttekst, tokens of secret. Start na het wijzigen van appinstellingen opnieuw via OneDrive koppelen. Vernieuw de callback niet: de Microsoft-code is eenmalig. AADSTS7000215 duidt op een onjuiste secret of een client-ID/secret van verschillende apps; 7000222 op een verlopen secret. De offline tests controleren ook dat geheime externe foutvelden niet worden getoond.
+
+## Downloadadres ontbreekt in bestandsgegevens
+
+Downloads gebruiken nu de Microsoft Graph-route /content en lezen het tijdelijke downloadadres uit de Location-header van de 302-respons. De Graph-aanvraag volgt de omleiding niet; een afzonderlijke HTTPS-aanvraag zonder Bearer-token haalt de bytes op. Bestandsgrootte en volledige SHA-256 blijven verplicht gecontroleerd. Een offline transporttest simuleert beide endpoints, inclusief ontbrekende adressen en beschadigde inhoud: php -n tests/onedrive-download.test.php. Een daadwerkelijke upload/download op de hosting moet nog door de eigenaar worden herhaald.
