@@ -25,6 +25,7 @@ function stored_file_path(string $key): string {
     return storage_path() . '/' . $key . '.bin';
 }
 require dirname(__DIR__) . '/3dlens-private/model-storage.php';
+require dirname(__DIR__) . '/3dlens-private/recovery.php';
 function expect(bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
     echo 'PASS: ' . $message . PHP_EOL;
@@ -41,6 +42,19 @@ function cleanup_fixture(string $path): void {
     rmdir($path);
 }
 try {
+    $gatePath = $fixture . '/recovery.local.json';
+    rejects(fn() => recovery_gate($gatePath), 404, 'Account recovery is disabled without a private gate');
+    $resetKey = str_repeat('a', 64);
+    $resetGate = ['expires' => time() + 900, 'key_hash' => hash('sha256', $resetKey)];
+    file_put_contents($gatePath, json_encode($resetGate));
+    expect(recovery_gate($gatePath) === $resetGate, 'Account recovery accepts an unexpired private gate');
+    rejects(fn() => recovery_validate($resetGate, str_repeat('b', 64), 'example-test-password', 'example-test-password'), 403, 'Recovery rejects a wrong one-time key');
+    rejects(fn() => recovery_validate($resetGate, $resetKey, 'short', 'short'), 422, 'Recovery rejects short passwords');
+    rejects(fn() => recovery_validate($resetGate, $resetKey, 'example-test-password', 'different-test-password'), 422, 'Recovery requires password confirmation');
+    recovery_validate($resetGate, $resetKey, 'example-test-password', 'example-test-password');
+    $resetGate['expires'] = time() - 1;
+    file_put_contents($gatePath, json_encode($resetGate));
+    rejects(fn() => recovery_gate($gatePath), 404, 'Expired recovery links never permit a reset');
     $_SESSION['onedrive_oauth'] = ['state' => 'expected', 'verifier' => 'test', 'expires' => time() + 900];
     $_GET = ['state' => 'wrong', 'code' => 'test'];
     rejects(fn() => od_complete_connect(), 403, 'OAuth callbacks from another session are rejected');

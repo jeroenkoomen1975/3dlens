@@ -14,4 +14,7 @@ Desktop.ini
 /3dlens-private/config.local.php
 /3dlens-private/storage/
 /3dlens-private/connections/
+/3dlens-private/recovery.local.json
+/3dlens-private/recovery-key.txt
+/3dlens-private/recovery.lock
 /work/

@@ -12,9 +12,9 @@ if not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,62}', args.subdomain):
     parser.error('Invalid subdomain folder')
 root = Path(__file__).resolve().parents[1]
 private_files = ['.htaccess', 'archive.php', 'auth-view.php', 'bootstrap.php',
-                 'config.example.php', 'repository.php', 'schema.sql', 'onedrive.php', 'model-storage.php']
+                 'config.example.php', 'repository.php', 'schema.sql', 'onedrive.php', 'model-storage.php', 'recovery.php']
 public_files = ['.htaccess', 'api.php', 'index.php', 'login.php', 'logout.php', 'setup.php', 'storage.js',
-                'onedrive.php', 'onedrive-callback.php', 'onedrive-migrate.php']
+                'onedrive.php', 'onedrive-callback.php', 'onedrive-migrate.php', 'recover.php']
 args.output.parent.mkdir(parents=True, exist_ok=True)
 with ZipFile(args.output, 'w', ZIP_DEFLATED) as bundle:
     for name in private_files:

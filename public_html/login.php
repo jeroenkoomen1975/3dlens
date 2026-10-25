@@ -47,9 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'last_seen' => $now, 'csrf' => bin2hex(random_bytes(32)),
             ];
             if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT)) {
+                $user['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
                 $rehash = db()->prepare('UPDATE lens_users SET password_hash = ? WHERE id = ?');
-                $rehash->execute([password_hash($password, PASSWORD_DEFAULT), $user['id']]);
+                $rehash->execute([$user['password_hash'], $user['id']]);
             }
+            $_SESSION['auth_hash'] = hash('sha256', $user['password_hash']);
             header('Location: index.php', true, 303);
             exit;
         }

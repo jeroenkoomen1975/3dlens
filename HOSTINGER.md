@@ -101,7 +101,7 @@ De modellen in je oude browser worden niet automatisch meegestuurd met de HTML. 
 
 Bewaar periodiek zowel een **database-export** als een kopie van **3dlens-private/storage** van hetzelfde moment. Maak die hostingbackup terwijl je geen wijzigingen uitvoert. Alleen de database exporteren bewaart niet de originele modellen. De ingebouwde `.forge`-backup bevat modellen en archiefgegevens maar geen gebruikersaccount of serverconfiguratie.
 
-Er is nog geen e-mailfunctie voor wachtwoordherstel. Bewaar je wachtwoord in een wachtwoordmanager. Als je het kwijt bent, laat je de bestaande wachtwoordhash via beveiligd databasebeheer vervangen door een nieuw gegenereerde PHP-wachtwoordhash. Wis je database of modellen niet om je account te herstellen.
+Er is geen e-mailfunctie voor wachtwoordherstel. De README beschrijft inmiddels een tijdelijke, eenmalige herstelpagina die alleen de hosting-eigenaar kan activeren. Bewaar je wachtwoord in een wachtwoordmanager. Als je het kwijt bent, laat je de bestaande wachtwoordhash via beveiligd databasebeheer vervangen door een nieuw gegenereerde PHP-wachtwoordhash. Wis je database of modellen niet om je account te herstellen.
 
 ## Als iets niet werkt
 

@@ -41,7 +41,11 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: no-referrer');
 header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+// Browsers can apply form-action to redirects too. Only the OneDrive settings
+// route needs to send the owner from its local POST to Microsoft's OAuth page.
+$formAction = basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'onedrive.php'
+    ? "'self' https://login.microsoftonline.com" : "'self'";
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action " . $formAction);
 
 $configFile = __DIR__ . '/config.local.php';
 if (!is_file($configFile)) {
@@ -128,9 +132,10 @@ function logged_in(): bool
         unset($_SESSION['user_id'], $_SESSION['started'], $_SESSION['last_seen']);
         return false;
     }
-    $user = db()->prepare('SELECT id FROM lens_users WHERE id = ?');
+    $user = db()->prepare('SELECT id, password_hash FROM lens_users WHERE id = ?');
     $user->execute([$_SESSION['user_id']]);
-    if (!$user->fetch()) {
+    $account = $user->fetch();
+    if (!$account || !hash_equals(hash('sha256', $account['password_hash']), $_SESSION['auth_hash'] ?? '')) {
         unset($_SESSION['user_id']);
         return false;
     }

@@ -88,3 +88,9 @@ De OneDrive-code is op Hostinger geplaatst. Zonder Microsoft-toestemming is de k
 `3dlens-private/connections/` bevat geheime appinstellingen en vernieuwbare tokens; deze map wordt uitgesloten van Git en installatiepakketten. De bestaande `storage/` bevat ook kleine OneDrive-verwijzingen: neem die samen met database en verbindingen mee in een beveiligde hostingbackup. Een database-export alleen is onvoldoende.
 
 Controleer de offline foutafhandeling met `php tests/onedrive.test.php`. Deze test gebruikt tijdelijke voorbeeldgegevens zonder Microsoft-verzoeken. PHP-lint, deze offline tests, tien Node-opslagtests en JavaScript-syntaxiscontroles zijn geslaagd. Een volledige Microsoft-koppeling en cloudmigratie zijn pas te testen na toestemming van de eigenaar.
+
+## Toegang herstellen via de hosting-eigenaar
+
+`recover.php` is standaard afgesloten (404). Alleen de hosting-eigenaar kan buiten public_html een tijdelijke `recovery.local.json` plaatsen met een SHA-256 van een cryptografisch willekeurige sleutel en een vervaltijd binnen 30 minuten. Eenmalig herstel vereist die sleutel, CSRF en tweemaal een nieuw wachtwoord van 14 tot 72 bytes. De eigenaar vult het wachtwoord zelf in; de sleutel wordt voor de databasewijziging verbruikt. Een onzekere databasecommit vereist een nieuwe herstelsleutel. Herstel wijzigt alleen de wachtwoordhash van eigenaarsaccount 1 en behoudt alle archiefgegevens. Sessies zijn aan de wachtwoordhash gekoppeld en worden na een wachtwoordwijziging ongeldig. Eenmalig aanmelden is ook nodig voor sessies die nog van voor deze controle dateren.
+
+De herstelbestanden en eventuele sleutelbackups zijn geheim en blijven buiten Git en distributiepakketten. Verlopen sleutels werken niet meer; ruim tijdelijke herstelarchieven en uitgepakte sleutelbestanden na afloop op via Hostinger.
