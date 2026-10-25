@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 // Filesystem and failure-path tests. No Microsoft requests or real credentials.
 define('THREEDLENS_BOOTSTRAPPED', true);
+function app_base_url(): string { return 'https://test.example'; }
 final class HttpError extends RuntimeException {
     public function __construct(public readonly int $status, string $message) { parent::__construct($message); }
 }

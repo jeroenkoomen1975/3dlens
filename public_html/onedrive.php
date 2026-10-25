@@ -66,7 +66,7 @@ session_write_close();
 <ol>
 <li>Open <a href="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener noreferrer">Microsoft Entra — Appregistraties</a> en registreer een app met de naam <strong>3DLens</strong>.</li>
 <li>Kies het accounttype dat zowel accounts uit organisatiemappen als persoonlijke Microsoft-accounts ondersteunt.</li>
-<li>Voeg een omleidingsadres van type <strong>Web</strong> toe: <code><?= h(OD_REDIRECT_URI) ?></code>. Kies hiervoor geen SPA- of mobiele app.</li>
+<li>Voeg een omleidingsadres van type <strong>Web</strong> toe: <code><?= h(od_redirect_uri()) ?></code>. Kies hiervoor geen SPA- of mobiele app.</li>
 <li>Gebruik de gedelegeerde Microsoft Graph-machtiging <code>Files.ReadWrite.AppFolder</code>. Voor blijvende toegang vraagt de koppeling ook <code>offline_access</code>. Er is geen toegang tot je hele OneDrive nodig.</li>
 <li>Maak onder <strong>Certificates &amp; secrets</strong> een client secret aan. Kopieer de <strong>Value</strong>, niet de Secret ID. Bewaar ook de vervaldatum: voor die datum moet je deze secret vernieuwen.</li>
 <li>Vul de Application (client) ID en de secret hieronder rechtstreeks in. Deel de secret niet via chat.</li>

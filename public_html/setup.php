@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/3dlens-private/bootstrap.php';
 require dirname(__DIR__) . '/3dlens-private/auth-view.php';
+require dirname(__DIR__) . '/3dlens-private/mail.php';
 
 $setupKey = config('setup_key');
 if (!is_string($setupKey) || strlen($setupKey) < 32) {
@@ -28,14 +29,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $username = strtolower(trim(post_string('username')));
         $password = post_string('password');
+        $email = strtolower(trim(post_string('recovery_email')));
         if (!preg_match('/\A[a-z0-9_.@-]{3,100}\z/', $username)) {
             $error = 'Kies een gebruikersnaam van 3 tot 100 letters, cijfers of . _ @ -.';
-        } elseif (strlen($password) < 14 || strlen($password) > 72) {
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254) {
+            $error = 'Vul je eigen geldige e-mailadres in voor wachtwoordherstel.';
+        } elseif (strlen($password) < 14 || strlen($password) > 72 || str_contains($password, "\0")) {
             $error = 'Kies een uniek wachtwoord van minimaal 14 en maximaal 72 bytes (gewone tekens tellen als één byte).';
         } elseif (!hash_equals($password, post_string('password_confirmation'))) {
             $error = 'De twee wachtwoorden zijn niet gelijk.';
         } else {
             storage_path();
+            app_base_url();
             // No public registration. Primary key 1 permits only one owner, even under concurrent setup requests.
             $schema = file_get_contents(dirname(__DIR__) . '/3dlens-private/schema.sql');
             foreach (explode(';', $schema) as $statement) {
@@ -43,10 +48,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     db()->exec($statement);
                 }
             }
+            email_reset_schema();
             try {
+                db()->beginTransaction();
                 $insert = db()->prepare('INSERT INTO lens_users (id, username, password_hash) VALUES (1, ?, ?)');
                 $insert->execute([$username, password_hash($password, PASSWORD_DEFAULT)]);
+                $settings = db()->prepare('INSERT INTO lens_account_settings (user_id, recovery_email) VALUES (1, ?)');
+                $settings->execute([$email]);
+                db()->commit();
             } catch (PDOException $exception) {
+                if (db()->inTransaction()) db()->rollBack();
                 if (($exception->errorInfo[1] ?? 0) === 1062) {
                     throw new HttpError(409, 'Het eigenaarsaccount bestaat al. Je kunt inloggen.');
                 }
@@ -62,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 auth_page('Maak je eigenaarsaccount', 'Gebruik de eenmalige installatiesleutel uit je privéconfiguratie. Na installatie wordt deze pagina geblokkeerd.', $error,
     '<label for="setup_key">Installatiesleutel</label><input type="password" id="setup_key" name="setup_key" autocomplete="off" required>
      <label for="username">Gebruikersnaam</label><input id="username" name="username" autocomplete="username" minlength="3" maxlength="100" required>
+     <label for="recovery_email">Je e-mailadres voor wachtwoordherstel</label><input type="email" id="recovery_email" name="recovery_email" autocomplete="email" maxlength="254" required>
      <label for="password">Wachtwoord (minimaal 14 tekens)</label><input type="password" id="password" name="password" autocomplete="new-password" minlength="14" required>
      <label for="password_confirmation">Herhaal wachtwoord</label><input type="password" id="password_confirmation" name="password_confirmation" autocomplete="new-password" required>',
     'Account aanmaken');

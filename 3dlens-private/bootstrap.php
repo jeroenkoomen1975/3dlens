@@ -65,6 +65,41 @@ function config(string $name): mixed
     return $config[$name];
 }
 
+function config_optional(string $name, mixed $default = null): mixed
+{
+    global $config;
+    return $config[$name] ?? $default;
+}
+
+function valid_app_url(mixed $value): string
+{
+    $url = is_string($value) ? rtrim(trim($value), '/') : '';
+    $parts = parse_url($url);
+    if (!$parts || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host']) ||
+        isset($parts['user'], $parts['pass']) || isset($parts['user']) || isset($parts['pass']) ||
+        isset($parts['query']) || isset($parts['fragment']) || preg_match('/[\x00-\x20\x7f]/', $url)) {
+        throw new HttpError(422, 'Vul de vaste HTTPS-URL van deze installatie in, zonder query of fragment.');
+    }
+    return $url;
+}
+
+function app_base_url(): string
+{
+    $value = config_optional('app_url', '');
+    if ($value === '') {
+        // Upgrade compatibility: use the owner's previously saved redirect,
+        // never an untrusted request Host header.
+        $path = __DIR__ . '/connections/onedrive-settings.json';
+        $old = is_file($path) ? json_decode((string) file_get_contents($path), true) : [];
+        $redirect = is_array($old) ? ($old['redirect_uri'] ?? '') : '';
+        if (is_string($redirect) && str_ends_with($redirect, '/onedrive-callback.php')) {
+            $value = substr($redirect, 0, -strlen('/onedrive-callback.php'));
+        }
+    }
+    if ($value === '') throw new HttpError(503, 'Stel app_url in de privéconfiguratie in op de HTTPS-URL van je installatie.');
+    return valid_app_url($value);
+}
+
 $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
 if (config('require_https') && !$https) {
     // Do not trust client-controlled forwarded headers or redirect to a Host header.

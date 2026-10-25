@@ -1,0 +1,27 @@
+3DLens 1.0.0 — installeren op eigen hosting
+
+Open INSTALLEREN.html in je browser voor de volledige Nederlandstalige handleiding.
+
+Nodig: PHP 8.2+, MySQL/MariaDB, HTTPS en schrijfrechten buiten public_html.
+Voor OneDrive: PHP cURL en een eigen Microsoft-appregistratie.
+Voor wachtwoordherstel: een bestaande mailbox met SMTP, PHP OpenSSL en de
+meegeleverde PHPMailer-bibliotheek. Elke installatie gebruikt eigen instellingen.
+
+1. Maak eerst een backup en gebruik een eigen website en lege database.
+2. Plaats 3dlens-private NAAST public_html, buiten alle publieke webmappen.
+3. Plaats de inhoud van public_html in de documentroot van je eigen website.
+4. Kopieer config.example.php naar config.local.php in de privemap.
+5. Vul je eigen app_url, databasegegevens en willekeurige setup_key in.
+6. Open https://jouw-domein.nl/setup.php en maak je account met hersteladres.
+7. Maak setup_key daarna leeg. Stel bij Account je verzendmailbox in en test die.
+8. Test een klein model voordat je een echt archief importeert.
+
+Dit pakket bevat geen accounts, wachtwoorden, models of OneDrive-toegang van de
+aanbieder. Het is een installatie voor een eigen privearchief, met een eigenaar;
+geen gedeelde dienst met openbare registratie. OneDrive-opslag is optioneel.
+
+PHPMailer 7.1.1 is ongewijzigd meegeleverd onder LGPL 2.1; de licentie staat in
+3dlens-private/vendor/phpmailer/LICENSE. Bron: https://github.com/PHPMailer/PHPMailer
+
+Bewaar backups van database, privemappen en modelinhoud. Na cloudmigratie bevat
+een hostingbackup alleen verwijzingen; bewaar ook een onafhankelijke .forge-backup.

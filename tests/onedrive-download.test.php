@@ -3,6 +3,7 @@ declare(strict_types=1);
 // Run with php -n: simulate both HTTPS endpoints without network or real tokens.
 if (extension_loaded('curl')) { fwrite(STDERR, "Run this transport test with php -n.\n"); exit(1); }
 define('THREEDLENS_BOOTSTRAPPED', true);
+function app_base_url(): string { return 'https://test.example'; }
 foreach (['CURLOPT_CUSTOMREQUEST', 'CURLOPT_HTTPHEADER', 'CURLOPT_CONNECTTIMEOUT', 'CURLOPT_TIMEOUT',
     'CURLOPT_FOLLOWLOCATION', 'CURLOPT_PROTOCOLS', 'CURLOPT_SSL_VERIFYPEER', 'CURLOPT_SSL_VERIFYHOST',
     'CURLOPT_HEADERFUNCTION', 'CURLOPT_WRITEFUNCTION', 'CURLOPT_UPLOAD', 'CURLOPT_INFILE',

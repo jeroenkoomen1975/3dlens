@@ -1,0 +1,69 @@
+<!doctype html><html lang="nl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3DLens installeren — handleiding 1.0.0</title>
+<style>body{font:16px/1.7 system-ui,sans-serif;color:#20251c;background:#f4f6f0;margin:0}main{max-width:860px;margin:auto;background:white;padding:48px 28px}h1{font-size:38px;line-height:1.15}h2{font-size:25px;margin-top:48px;line-height:1.3}h3{font-size:18px}a{color:#456700}code,pre{background:#eef1e8;padding:3px 6px;overflow-wrap:anywhere}pre{padding:18px;overflow:auto}.label{font-size:13px;text-transform:uppercase;letter-spacing:2px;color:#526b36}.note{padding:18px 22px;border-left:4px solid #90b51b;background:#f1f6e8}li{margin:9px 0}table{border-collapse:collapse;width:100%}th,td{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid #ddd}@media print{body{background:white}main{padding:0}h2{break-after:avoid}pre,.note{break-inside:avoid}a{color:inherit}}</style>
+<main><p class="label">3DLens · Installatiehandleiding · Versie 1.0.0</p><h1>Je eigen 3D-archief.<br>Op je eigen hosting.</h1>
+<p>3DLens beheert je STL-, 3MF- en resin/SLA-bestanden met collecties, tags en een 3D-viewer. Je installeert een eigen privéarchief met één eigenaarsaccount. De website, gegevens en modeldownloads vereisen inloggen.</p>
+<p class="note">Je downloadt software voor je eigen website. Er wordt geen account aangemaakt bij de aanbieder. Je gebruikt je eigen database, mailbox en eventueel OneDrive. Het pakket bevat uitsluitend applicatiecode en voorbeeldinstellingen.</p>
+<nav><a href="#nodig">Benodigdheden</a> · <a href="#plaatsen">Bestanden plaatsen</a> · <a href="#instellen">Installatie</a> · <a href="#mail">Herstelmail</a> · <a href="#onedrive">OneDrive</a> · <a href="#testen">Controleren</a> · <a href="#backup">Backup</a> · <a href="#problemen">Problemen oplossen</a></nav>
+<h2 id="nodig">1. Dit heb je nodig</h2><ul>
+<li>Een eigen PHP-website met HTTPS en PHP 8.2 of hoger. Een websitebouwer die alleen statische pagina’s ondersteunt is niet voldoende.</li>
+<li>Een eigen lege MySQL- of MariaDB-database met InnoDB en utf8mb4. Gebruik geen database van een andere applicatie.</li>
+<li>PHP-extensies PDO MySQL en sessies. Voor OneDrive ook cURL; voor beveiligde SMTP-mail ook OpenSSL.</li>
+<li>Toegang tot de map boven <code>public_html</code>, zodat privébestanden buiten de website blijven.</li>
+<li>Een bestaande mailbox met SMTP-gegevens voor wachtwoordherstel. Dit mag een andere mailbox zijn dan het adres waarop je herstelmails ontvangt.</li></ul>
+<p>Een Node.js-server, Composer en een buildstap zijn niet nodig op de hosting. De browser gebruikt Three.js via jsDelivr en Google Fonts en heeft hiervoor internet nodig. Je modellen worden niet naar deze diensten geüpload.</p>
+<h2 id="plaatsen">2. Download uitpakken en bestanden plaatsen</h2><ol>
+<li>Maak een backup als er al iets op je website staat. Gebruik voor 3DLens een eigen domein of eigen websiteomgeving.</li>
+<li>Pak de ZIP op je computer uit, of upload deze buiten <code>public_html</code> en pak hem daar uit.</li>
+<li>Plaats de map <code>3dlens-private</code> naast <code>public_html</code>. Plaats de inhoud van de meegeleverde <code>public_html</code>-map in de documentroot van je website. Neem verborgen <code>.htaccess</code>-bestanden mee.</li></ol>
+<pre>map-van-je-domein/
+├── 3dlens-private/
+│   ├── config.example.php
+│   ├── config.local.php    ← maak je zelf
+│   ├── migrations/
+│   ├── vendor/
+│   └── overige applicatiebestanden
+└── public_html/
+    ├── index.php
+    ├── login.php
+    ├── setup.php
+    └── overige webbestanden</pre>
+<p class="note">Zet <code>3dlens-private</code> nooit in een publiek bereikbare map. Het standaardpakket verwacht de bovenstaande indeling. Bij een subdomein met een documentroot onder de publieke map van het hoofddomein moeten de verwijzingen in alle publieke PHP-bestanden worden aangepast naar de privémap buiten beide websites. Gebruik daarvoor een aangepast pakket of vraag je hostingbeheerder om hulp.</p>
+<h2 id="instellen">3. Database en account instellen</h2><ol>
+<li>Maak via je hostingpaneel een database met een databasegebruiker en sterk wachtwoord. Noteer de volledige namen inclusief eventuele prefix.</li>
+<li>Kopieer in de privémap <code>config.example.php</code> naar <code>config.local.php</code>.</li>
+<li>Vul <code>app_url</code> in met de vaste HTTPS-URL van jouw installatie, bijvoorbeeld <code>https://archief.jouwdomein.nl</code>. Vul daarna je databasehost, naam, gebruiker en wachtwoord in. Neem de host over uit je hostingpaneel.</li>
+<li>Vul bij <code>setup_key</code> een willekeurige sleutel van minstens 32 tekens in, bijvoorbeeld uit je wachtwoordmanager. Dit is een tijdelijke installatiesleutel.</li>
+<li>Laat <code>storage_path</code> op de standaardwaarde staan en <code>require_https</code> aan. Bewaar de PHP-aanhalingstekens en komma’s. Een enkel aanhalingsteken of backslash in een waarde moet correct worden ge-escaped.</li>
+<li>Open <code>https://jouw-domein.nl/setup.php</code>. Vul de installatiesleutel in en kies een gebruikersnaam, een hersteladres en een uniek wachtwoord van minimaal 14 en maximaal 72 bytes.</li>
+<li>Maak <code>setup_key</code> daarna leeg. Zodra het eigenaarsaccount bestaat, is de installatiepagina geblokkeerd.</li>
+<li>Log in en stel bij <strong>Account</strong> de herstelmail in.</li></ol>
+<p>Het hersteladres is het adres waarop jij je herstellink ontvangt. Bij installatie worden je modelbestanden niet automatisch geïmporteerd.</p>
+<h2 id="mail">4. Wachtwoordherstel via e-mail activeren</h2><p>De link <strong>Wachtwoord vergeten?</strong> staat op het inlogscherm. Voor aflevering is eerst een bestaande verzendmailbox nodig.</p><ol>
+<li>Open na inloggen <strong>Account</strong>. Controleer je hersteladres en de vaste HTTPS-URL.</li>
+<li>Vul de SMTP-server, poort, het volledige mailboxadres, mailboxwachtwoord en toegestane afzenderadres van jouw provider in.</li>
+<li>Bevestig met je huidige 3DLens-wachtwoord en kies <strong>Instellingen opslaan</strong>. Het mailboxwachtwoord wordt nooit opnieuw getoond; een leeg veld behoudt de opgeslagen waarde.</li>
+<li>Vul je huidige 3DLens-wachtwoord opnieuw in en kies <strong>Testmail naar opgeslagen hersteladres</strong>. Controleer of de mail aankomt, ook in spam.</li>
+<li>Test vervolgens vanaf het inlogscherm een echte aanvraag via <strong>Wachtwoord vergeten?</strong>. Jij voert zelf het nieuwe wachtwoord in.</li></ol>
+<table><tr><th>Hostinger Email</th><th>Instelling</th></tr><tr><td>SMTP-server</td><td>smtp.hostinger.com</td></tr><tr><td>Poort</td><td>465 met SSL, of 587 met STARTTLS</td></tr><tr><td>Gebruiker</td><td>Het volledige bestaande mailboxadres</td></tr><tr><td>Wachtwoord</td><td>Het wachtwoord van die mailbox</td></tr></table>
+<p>Controleer de actuele gegevens bij je eigen provider. Sommige providers vereisen een appwachtwoord of ondersteunen deze aanmeldmethode niet. Zorg dat de afzender is toegestaan en dat SPF/DKIM voor de verzendmailbox kloppen. Een melding dat de mailserver het bericht heeft aangenomen bewijst nog geen aflevering in je inbox.</p>
+<p>Herstellinks zijn eenmalig en 30 minuten geldig. Een nieuwe aanvraag vervangt de vorige link. De database bewaart alleen een hash van de geheime code. Oude sessies worden ongeldig na een geslaagde wijziging. De aanvraagpagina verklapt niet of een e-mailadres bekend is en begrenst aanvragen per IP en adres. Op PHP-FPM en LiteSpeed wordt het antwoord waar mogelijk afgerond vóór de mailverzending; andere hostingomgevingen kunnen langer wachten op SMTP.</p>
+<h2 id="onedrive">5. OneDrive gebruiken (optioneel)</h2><p>Zonder koppeling blijven je modellen privé op je webserver. Met OneDrive blijven collecties, tags, omschrijvingen en miniaturen in je database; de originele modelbestanden gaan naar de eigen OneDrive-appmap.</p><ol>
+<li>Open in 3DLens <strong>OneDrive</strong>. Daar staat het exacte omleidingsadres van jouw installatie.</li>
+<li>Maak een eigen appregistratie in <a href="https://entra.microsoft.com/">Microsoft Entra</a>. Je hebt toegang nodig tot een directory waarin je apps mag registreren. Een persoonlijk OneDrive-account hebben is op zichzelf niet voldoende om een appregistratie te mogen maken.</li>
+<li>Kies ondersteuning voor organisatieaccounts én persoonlijke Microsoft-accounts. Registreer het omleidingsadres als <strong>Web</strong>, niet als SPA.</li>
+<li>Gebruik gedelegeerde <code>Files.ReadWrite.AppFolder</code> en <code>offline_access</code>. Maak zelf een client secret en kopieer direct de <strong>Value</strong>, niet de Secret ID. Noteer de vervaldatum.</li>
+<li>Vul de Application (client) ID en secret Value in 3DLens in en sla op. Kies <strong>OneDrive koppelen</strong> en geef zelf bij Microsoft toestemming voor de appmap.</li>
+<li>Test één klein model. Bestaande lokale modellen zet je met de aparte overzetknop naar OneDrive over. Lokale kopieën blijven behouden tot je zelf de afzonderlijke opruimactie kiest.</li></ol>
+<p>Verplaats of verwijder de appmap niet handmatig. Downloads lopen via je beveiligde 3DLens-login. De server gebruikt tijdelijke schijfruimte en controleert grootte en SHA-256. De standaardlimiet blijft 200 MiB per model; houd ook rekening met het Microsoft-quotum.</p>
+<h2 id="testen">6. Eerst controleren met een klein model</h2><ol>
+<li>Zonder login moeten archief en modeldownloads geblokkeerd zijn.</li><li>Importeer één klein STL-bestand en bekijk de 3D-preview.</li><li>Maak een collectie, tag en omschrijving en vernieuw de pagina.</li><li>Download het model, maak een backup en controleer opnieuw inloggen.</li><li>Controleer de testmail en één echte wachtwoordherstelmail.</li><li>Pas daarna importeer je een echt archief of ruim je lokale cloudkopieën op.</li></ol>
+<p>Voor bestanden tot de standaardlimiet stel je <code>upload_max_filesize</code> op minstens 200 MiB in en <code>post_max_size</code> iets hoger, bijvoorbeeld 220 MiB. Hostinglimieten kunnen lager zijn. PHP moet kunnen schrijven naar de privémap; gebruik geen algemeen schrijfbare rechten zoals 777.</p>
+<h2 id="backup">7. Bestaande modellen en backups</h2><p>Gebruik in de oude lokale HTML de knop <strong>Backup</strong>. Je modellen staan in de browserdatabase en zitten niet automatisch in het HTML-bestand. Log in op je nieuwe website en gebruik <strong>Restore</strong> om het .forge-bestand samen te voegen. Bij onderbreking kun je opnieuw samenvoegen; dezelfde inhoud wordt overgeslagen.</p>
+<p>Bewaar periodiek database, privéconfiguratie, storage en connections samen, op een veilige plek. Connections bevat mailgeheimen en vernieuwbare OneDrive-toegang. Na cloudmigratie bevat storage kleine verwijzingen: een hostingbackup alleen bevat dan niet de modelinhoud. Bewaar ook een onafhankelijke .forge-backup.</p>
+<h2 id="problemen">8. Als iets niet werkt</h2><table>
+<tr><th>Melding</th><th>Controle</th></tr><tr><td>Nog niet ingesteld</td><td>Naam en plaats van config.local.php; PHP-versie en documentroot.</td></tr><tr><td>Tijdelijk niet beschikbaar</td><td>PDO MySQL, databasegegevens en PHP-foutenlog. Deel geen configuratie of geheimen.</td></tr><tr><td>Opslag niet beschikbaar</td><td>Privémap buiten alle publieke documentroots, met schrijfrechten voor PHP.</td></tr><tr><td>Geen herstelmail</td><td>Hersteladres opgeslagen, SMTP ingesteld, testmail ontvangen, spammap, afzender en rate limit. Wacht 15 minuten bij te veel aanvragen.</td></tr><tr><td>Herstellink ongeldig</td><td>Gebruik de meest recente mail binnen 30 minuten. Een gebruikte link werkt niet nogmaals.</td></tr><tr><td>AADSTS7000215</td><td>Gebruik de secret Value van precies dezelfde app als de client-ID; geen Secret ID.</td></tr><tr><td>3D-preview werkt niet</td><td>Browserconsole, jsDelivr-toegang en bestandsvariant. Sommige SLA/resinvarianten worden beperkt ondersteund.</td></tr></table>
+<h2>9. Een bestaande installatie bijwerken</h2><p>Maak eerst een complete backup. Werk alleen de applicatiecode, vendor en migrations bij. Behoud <code>config.local.php</code>, storage en connections. Voeg <code>app_url</code> toe als deze nog ontbreekt. Open na inloggen Account: de nieuwe hersteltabellen worden aanvullend aangemaakt. Stel daar je hersteladres en verzendmailbox in. Er worden geen bestaande modellen of accounts gewist.</p>
+<p>Host je bestaande subdomein in een diepere map, gebruik dan een passend updatepakket met de juiste privéverwijzingen. Plaats het algemene pakket niet blind over een aangepaste installatie.</p>
+<h2>10. Meegeleverde software en controle</h2><p>PHPMailer 7.1.1 is ongewijzigd meegeleverd onder LGPL 2.1; de licentie staat bij de bibliotheek. <a href="https://github.com/PHPMailer/PHPMailer/releases/tag/v7.1.1">Officiële bron</a>. De ontwikkelcontroles omvatten PHP-syntaxis, opslagtests, gesimuleerd OneDrive-transport en geïsoleerde resettests. Configureer en test je eigen hosting, database, mailbox en OneDrive voordat je echte modellen importeert.</p>
+<p>Handige bronnen: <a href="https://www.hostinger.com/support/1575756-how-to-get-email-account-configuration-details-for-hostinger-email/">Hostinger SMTP-gegevens</a> · <a href="https://learn.microsoft.com/en-us/graph/onedrive-sharepoint-appfolder">Microsoft OneDrive-appmap</a>.</p></main></html>

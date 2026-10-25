@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 // Copy to config.local.php OUTSIDE public_html. Never commit the real credentials.
 return [
+    'app_url' => 'https://jouw-domein.nl',
     'db_host' => 'localhost',
     'db_port' => 3306,
     'db_name' => 'YOUR_DATABASE_NAME',

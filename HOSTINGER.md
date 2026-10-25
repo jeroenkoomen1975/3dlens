@@ -121,3 +121,11 @@ De tijdelijke uitgepakte map en het installatiearchief staan buiten `public_html
 ## Optionele OneDrive-opslag
 
 Zie [ONEDRIVE.md](ONEDRIVE.md). De OneDrive-update behoudt de database, lokale modellen en `config.local.php`. Publiceer beide nieuwe privémodules voordat je `repository.php` bijwerkt. De koppeling wordt pas actief na de Microsoft-toestemming van de eigenaar.
+
+## Publieke distributie en herstelmail 1.0.0
+
+De openbare downloadpagina staat op https://3dlens.cloud/ met handleiding en versie-ZIP. De aanwezige WordPress-installatie is behouden; een DirectoryIndex-regel buiten de WordPress-markeringen toont index.html als startpagina. Na publicatie is de hostingcache gewist. Het gepubliceerde ZIP-bestand is opnieuw gedownload en op SHA-256 vergeleken met het geteste lokale origineel: identiek.
+
+Voor de update zijn 3dlens-private, de publieke map koomen en de oude WordPress-.htaccess gekopieerd naar 3dlens-backup-voor-publicatie, buiten public_html. De oorspronkelijke config.local.php, modelopslag en OneDrive-verbindingen zijn behouden. De twee aanvullende hersteltabellen zijn op MySQL succesvol aangemaakt met migrations/002-email-reset.sql. Er zijn geen hersteladressen of SMTP-geheimen door de agent opgeslagen.
+
+De bestaande eigenaar moet na inloggen op account.php zelf het hersteladres en een verzendmailbox instellen en aflevering testen. De gebruiker heeft jeroen@jroen.nl als gewenst hersteladres opgegeven; dit is nog niet geactiveerd. De private connections-map bevat nog geen mail-settings.json. Herstel via e-mail is daarom nog niet actief. Er is geen echte SMTP-mail verstuurd. Anonieme herstelaanvragen zijn op de hosting getest met een niet-bestaand testadres; de pagina gaf de generieke bevestiging zonder accountinformatie.

@@ -4,7 +4,7 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) {
     http_response_code(404);
     exit;
 }
-function auth_page(string $title, string $intro, string $error, string $fields, string $submit): never
+function auth_page(string $title, string $intro, string $error, string $fields, string $submit, string $footer = ''): never
 {
     $token = h(csrf_token());
     header('Content-Type: text/html; charset=utf-8');
@@ -45,6 +45,7 @@ function auth_page(string $title, string $intro, string $error, string $fields, 
     <?= $fields ?>
     <button type="submit"><?= h($submit) ?></button>
   </form>
+  <?= $footer ?>
   <small>Dit archief is alleen toegankelijk voor de eigenaar.</small>
 </main>
 </body>

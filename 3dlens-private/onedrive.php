@@ -2,7 +2,7 @@
 declare(strict_types=1);
 if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
 
-const OD_REDIRECT_URI = 'https://koomen.3dlens.cloud/onedrive-callback.php';
+function od_redirect_uri(): string { return app_base_url() . '/onedrive-callback.php'; }
 const OD_SCOPE = 'offline_access https://graph.microsoft.com/Files.ReadWrite.AppFolder';
 const OD_GRAPH = 'https://graph.microsoft.com/v1.0';
 const OD_LOGIN = 'https://login.microsoftonline.com/common/oauth2/v2.0/';
@@ -123,7 +123,7 @@ function od_save_settings(string $clientId, string $clientSecret): void
         $settings = $changed ? [] : $old;
         $settings['client_id'] = $clientId;
         $settings['client_secret'] = $clientSecret;
-        $settings['redirect_uri'] = OD_REDIRECT_URI;
+        $settings['redirect_uri'] = od_redirect_uri();
         if ($changed) od_write_json('onedrive-tokens', []);
         od_write_json('onedrive-settings', $settings);
     });
@@ -193,7 +193,7 @@ function od_token_error(array $data): string
         '700016', '700011' => 'Microsoft kan deze appregistratie niet vinden. Controleer de Application (client) ID en ondersteuning voor persoonlijke Microsoft-accounts.',
         '7000218' => 'Microsoft ontvangt geen geldige appreferentie. Controleer de client secret en registreer het omleidingsadres als Web.',
         '700025', '9002326' => 'De app is als publieke app of SPA ingesteld. Registreer het omleidingsadres als Web voor deze serverkoppeling.',
-        '50011' => 'Het omleidingsadres wijkt af. Stel bij Web exact ' . OD_REDIRECT_URI . ' in.',
+        '50011' => 'Het omleidingsadres wijkt af. Stel bij Web exact ' . od_redirect_uri() . ' in.',
         '65001' => 'Microsoft heeft de benodigde toestemming nog niet bevestigd. Start OneDrive koppelen opnieuw en controleer de gevraagde machtigingen.',
         '70000', '54005' => 'De Microsoft-bevestiging is verlopen, ongeldig of al gebruikt. Start opnieuw via OneDrive koppelen; vernieuw de terugkeerpagina niet.',
         default => match ($data['error'] ?? '') {
@@ -265,7 +265,7 @@ function od_begin_connect(): never
     $_SESSION['onedrive_oauth'] = ['state' => $state, 'verifier' => $verifier, 'expires' => time() + 900];
     $query = http_build_query([
         'client_id' => od_settings()['client_id'], 'response_type' => 'code',
-        'redirect_uri' => OD_REDIRECT_URI, 'response_mode' => 'query', 'scope' => OD_SCOPE,
+        'redirect_uri' => od_redirect_uri(), 'response_mode' => 'query', 'scope' => OD_SCOPE,
         'state' => $state, 'code_challenge' => rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='),
         'code_challenge_method' => 'S256', 'prompt' => 'select_account',
     ]);
@@ -287,7 +287,7 @@ function od_complete_connect(): void
     if (!is_string($code) || $code === '' || strlen($code) > 16384) throw new HttpError(400, 'Microsoft heeft geen geldige bevestiging gestuurd.');
     session_write_close();
     $tokens = od_token_exchange(['grant_type' => 'authorization_code', 'code' => $code,
-        'redirect_uri' => OD_REDIRECT_URI, 'code_verifier' => $pending['verifier'], 'scope' => OD_SCOPE]);
+        'redirect_uri' => od_redirect_uri(), 'code_verifier' => $pending['verifier'], 'scope' => OD_SCOPE]);
     if (empty($tokens['refresh_token'])) throw new HttpError(503, 'Microsoft heeft geen blijvende toegang bevestigd. Koppel opnieuw met offline_access.');
     $root = od_http('GET', OD_GRAPH . '/me/drive/special/approot', ['Authorization: Bearer ' . $tokens['access_token']]);
     $folder = $root['data'];

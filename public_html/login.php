@@ -59,7 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'De gebruikersnaam of het wachtwoord klopt niet.';
     }
 }
-auth_page('Welkom terug', 'Log in om je modellen en collecties te openen.', $error,
+$intro = !empty($_SESSION['password_reset_done']) ? 'Je wachtwoord is gewijzigd. Log in met je bestaande gebruikersnaam en je nieuwe wachtwoord.' : 'Log in om je modellen en collecties te openen.';
+unset($_SESSION['password_reset_done']);
+auth_page('Welkom terug', $intro, $error,
     '<label for="username">Gebruikersnaam</label><input id="username" name="username" autocomplete="username" maxlength="100" required autofocus>
      <label for="password">Wachtwoord</label><input type="password" id="password" name="password" autocomplete="current-password" required>',
-    'Inloggen');
+    'Inloggen', '<p style="margin-top:20px"><a style="color:#d4ff3a" href="forgot-password.php">Wachtwoord vergeten?</a></p>');
