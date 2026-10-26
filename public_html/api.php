@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/3dlens-private/bootstrap.php';
 require dirname(__DIR__) . '/3dlens-private/repository.php';
+require dirname(__DIR__) . '/3dlens-private/projects.php';
 require_login();
 $method = $_SERVER['REQUEST_METHOD'];
 if (!in_array($method, ['GET', 'POST', 'DELETE'], true)) {
@@ -14,11 +15,13 @@ if ($method !== 'GET') {
 // Release session locking for concurrent thumbnails, downloads and large uploads.
 session_write_close();
 $store = $_GET['store'] ?? '';
-if (!in_array($store, ['collections', 'files'], true)) {
+if (!in_array($store, ['collections', 'files', 'projects'], true)) {
     throw new HttpError(422, 'Ongeldig opslagtype.');
 }
+if ($store === 'projects' || ($store === 'files' && $method === 'DELETE')) ensure_projects_schema();
 
 if ($method === 'GET') {
+    if ($store === 'projects' && !isset($_GET['id'])) json_response(list_projects());
     if (isset($_GET['id'])) {
         if ($store !== 'files') {
             throw new HttpError(422, 'Dit bestand is niet beschikbaar.');
@@ -71,6 +74,7 @@ if (!is_array($metadata)) {
 if ($store === 'files') {
     json_response(save_model($metadata, $_FILES['file'] ?? null));
 }
+if ($store === 'projects') json_response(save_project($metadata));
 $id = input_id($metadata['id'] ?? null);
 $name = trim(bounded_text($metadata['name'] ?? null, 200, 'collectienaam'));
 if ($name === '') {

@@ -16,6 +16,19 @@ function fixture(respond) {
 }
 const json = (payload, status = 200) => new Response(JSON.stringify(payload), { status, headers: { 'Content-Type': 'application/json' } });
 
+test('project reads, writes and deletion use private storage and CSRF without model uploads', async () => {
+  const project = { id:'robot', name:'Robot', parts:[{fileId:'arm',quantity:2,notes:'Pair'}] };
+  const f = fixture((url,options) => json(options.method === 'POST' ? project : options.method === 'DELETE' ? {ok:true} : [project]));
+  assert.deepEqual(await f.storage.getAll('projects'),[project]);
+  await f.storage.put('projects',project);
+  assert.equal(f.calls[1].options.headers['X-CSRF-Token'],'session-csrf');
+  assert.equal(f.calls[1].options.body.get('file'),null);
+  assert.equal(JSON.parse(f.calls[1].options.body.get('metadata')).parts[0].quantity,2);
+  await f.storage.delete('projects','robot');
+  assert.equal(f.calls[2].options.method,'DELETE');
+  assert.equal(f.calls[2].options.headers['X-CSRF-Token'],'session-csrf');
+});
+
 test('lists server metadata without fetching all model bytes', async () => {
   const f = fixture(() => json([{ id: 'a', name: 'part.stl' }]));
   const items = await f.storage.getAll('files');

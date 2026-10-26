@@ -2189,6 +2189,19 @@ require_once __DIR__ . '/release.php';
   .status-link:hover {
     color: var(--accent);
   }
+.archive-dialog { color:var(--ink);background:var(--bg);border:1px solid var(--line);width:min(1050px,95vw);max-height:90vh;padding:24px;overflow:auto;margin:auto; }
+.archive-dialog::backdrop { background:rgba(0,0,0,.75); }
+.archive-dialog p,.model-check p { font-size:12px;line-height:1.65;color:var(--ink-dim); }
+.feature-heading,.feature-actions { display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
+.project-layout { display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px; }
+.project-list { display:flex;flex-direction:column;gap:8px;margin-top:16px; }
+.project-part { display:grid;grid-template-columns:minmax(100px,1fr) 80px minmax(100px,1fr) 35px;gap:8px;align-items:end;border-bottom:1px solid var(--line);padding:12px 0; }
+.archive-dialog label { display:block;font-size:12px;margin:12px 0; }
+.archive-dialog input,.archive-dialog textarea,.archive-dialog select { display:block;width:100%;margin:6px 0; }
+.archive-dialog .btn { white-space:normal;overflow-wrap:anywhere; }
+.model-check { border-top:1px solid var(--line);margin:16px 0;padding-top:14px; }
+.duplicate-entry { border-top:1px solid var(--line);padding:12px 0;overflow-wrap:anywhere; }
+@media(max-width:700px) { .project-layout { grid-template-columns:1fr; } .project-part { grid-template-columns:1fr 80px; } }
 </style>
 </head>
 <body>
@@ -2276,6 +2289,8 @@ require_once __DIR__ . '/release.php';
         <span class="count" id="col-count">0</span>
       </div>
       <button class="new-collection" id="btn-new-collection">+ Nieuwe Collectie</button>
+      <button class="new-collection" id="btn-projects">Projecten / onderdelen</button>
+      <button class="new-collection" id="btn-duplicate-report">Laatste importrapport</button>
     </div>
     <div class="collections" id="collections-list"></div>
   </aside>
@@ -2607,6 +2622,8 @@ require_once __DIR__ . '/release.php';
 
 <script type="module">
 import { createArchiveStorage } from './storage.js';
+import { analyzeMesh, exactDuplicate, remapProject, threeMFUnitScale } from './model-analysis.js';
+import { createProjectsUI } from './projects.js';
 import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
@@ -3701,6 +3718,10 @@ const serverStorage = createArchiveStorage({
 });
 
 async function openDB() { /* Server database is opened by PHP. */ }
+const projectsUI = createProjectsUI({ storage: serverStorage, getFiles: () => state.files,
+  getSelected: () => state.selectedIds.size ? [...state.selectedIds] : (state.selectedFile ? [state.selectedFile] : []),
+  selectFile, toast: (...args) => showToast(...args), escapeHtml });
+document.getElementById('btn-projects').addEventListener('click', () => projectsUI.open());
 async function dbGetAll(store) { return serverStorage.getAll(store); }
 async function reloadArchive() {
   if (state.loading) return;
@@ -3958,15 +3979,27 @@ function parseModel(arrayBuffer, filename) {
   const type = getFileType(filename);
   try {
     let geometry;
+    let approximate = false;
 
     if (type === 'stl') {
       geometry = stlLoader.parse(arrayBuffer);
+      // STL convention: Z is print height; the viewer uses Y-up. STL has no unit metadata.
+      geometry.rotateX(-Math.PI / 2);
     } else if (type === '3mf') {
       // Try Three.js's loader first — works for spec-compliant 3MF files
       let geometries = null;
       try {
         const group = threeMFLoader.parse(arrayBuffer);
         if (group) {
+          // ThreeMFLoader r160 reads but does not apply model units.
+          const modelEntries = unzipSync(new Uint8Array(arrayBuffer), { filter: entry => /\.model$/i.test(entry.name) });
+          const scales = Object.values(modelEntries).map(bytes => {
+            const header = strFromU8(bytes.subarray(0, 4096));
+            const modelTag = header.match(/<(?:\w+:)?model\b[^>]*>/)?.[0];
+            return modelTag ? threeMFUnitScale(extractAttr(modelTag, 'unit') || 'millimeter') : null;
+          });
+          if (scales.length && scales.every(scale => scale !== null && scale === scales[0])) group.scale.setScalar(scales[0]);
+          else approximate = true;
           group.rotation.set(-Math.PI / 2, 0, 0);
           group.updateMatrixWorld(true);
           const collected = collectGeometriesFromObject(group);
@@ -3982,6 +4015,7 @@ function parseModel(arrayBuffer, filename) {
       if (!geometries || geometries.length === 0) {
         try {
           geometries = parseThreeMFCustom(arrayBuffer);
+          approximate = true; // Legacy fallback ignores component transforms and model units.
         } catch (customErr) {
           console.error('Custom 3MF parser also failed:', customErr);
           return null;
@@ -4004,11 +4038,13 @@ function parseModel(arrayBuffer, filename) {
             geometries.forEach(g => g.dispose());
           } else {
             geometry = geometries[0];
+            approximate = true;
             for (let i = 1; i < geometries.length; i++) geometries[i].dispose();
           }
         } catch (mergeErr) {
           console.warn('3MF merge failed, using first mesh:', mergeErr);
           geometry = geometries[0];
+          approximate = true;
           for (let i = 1; i < geometries.length; i++) geometries[i].dispose();
         }
       }
@@ -4021,6 +4057,13 @@ function parseModel(arrayBuffer, filename) {
       return null;
     }
 
+    const positions = geometry.attributes.position;
+    for (let i = 0; i < positions.count; i++) {
+      if (![positions.getX(i), positions.getY(i), positions.getZ(i)].every(Number.isFinite)) {
+        geometry.dispose(); return null;
+      }
+    }
+    const modelCheck = analyzeMesh(positions, geometry.index);
     geometry.computeBoundingBox();
     geometry.computeVertexNormals();
     const bb = geometry.boundingBox;
@@ -4032,11 +4075,13 @@ function parseModel(arrayBuffer, filename) {
     return {
       geometry,
       type,
+      modelCheck,
       stats: {
         triangles: Math.round(triangles),
         width: size.x,
         height: size.y,
         depth: size.z,
+        approximate: approximate ? 1 : 0,
       }
     };
   } catch (e) {
@@ -4956,6 +5001,7 @@ async function generatePreview(file) {
         console.warn('Thumbnail render failed:', thumbErr);
       }
       file.stats = parsed.stats;
+      file.modelCheck = parsed.modelCheck;
       file.ai = analyzeModelLocally(file, parsed);
       file.previewStatus = 'ready';
       await saveFile(file);
@@ -5066,17 +5112,25 @@ async function loadFileIntoInspector(file) {
       cacheGeometry(file.id, cacheEntry);
 
       loadIntoInspector(parsed.geometry);
+      // Existing models gain diagnostics without requiring a new thumbnail.
+      const needsThumbnail = !file.thumbnail || file.previewStatus !== 'ready' || !file.modelCheck?.checked;
+      if (!file.modelCheck?.checked) {
+        file.modelCheck = parsed.modelCheck;
+        file.stats = parsed.stats;
+        await saveFile(file);
+        if (state.selectedFile === file.id) renderInspectorDetails(file);
+      }
 
       // Persist a thumbnail for the card if we don't have one yet, or if the
       // status indicates a previously failed/pending state. This is a one-time
       // cost per file: next time you open the app the card already has its preview.
-      const needsThumbnail = !file.thumbnail || file.previewStatus !== 'ready';
       if (needsThumbnail) {
         try {
           const thumb = renderThumbnail(parsed.geometry, parsed.type);
           if (thumb) {
             file.thumbnail = thumb;
             file.stats = parsed.stats;
+            file.modelCheck = parsed.modelCheck;
             file.ai = analyzeModelLocally(file, parsed);
             file.previewStatus = 'ready';
             await saveFile(file);
@@ -5893,15 +5947,15 @@ function renderInfoStatsRows(f, stats) {
   return `
     <div class="detail-row">
       <span class="detail-key">${t('detail.width')}</span>
-      <span class="detail-val">${stats && stats.width ? stats.width.toFixed(2) + ' mm' : '—'}</span>
+      <span class="detail-val">${Number.isFinite(stats?.width) ? stats.width.toFixed(2) + ' mm' : '—'}</span>
     </div>
     <div class="detail-row">
       <span class="detail-key">${t('detail.height')}</span>
-      <span class="detail-val">${stats && stats.height ? stats.height.toFixed(2) + ' mm' : '—'}</span>
+      <span class="detail-val">${Number.isFinite(stats?.height) ? stats.height.toFixed(2) + ' mm' : '—'}</span>
     </div>
     <div class="detail-row">
       <span class="detail-key">${t('detail.depth')}</span>
-      <span class="detail-val">${stats && stats.depth ? stats.depth.toFixed(2) + ' mm' : '—'}</span>
+      <span class="detail-val">${Number.isFinite(stats?.depth) ? stats.depth.toFixed(2) + ' mm' : '—'}</span>
     </div>
   `;
 }
@@ -5980,6 +6034,8 @@ function renderInspectorDetails(f) {
         <span class="detail-val">${collection ? escapeHtml(collection.name) : '—'}</span>
       </div>
       ${renderInfoStatsRows(f, stats)}
+      ${renderModelCheck(f)}
+      <button class="btn" id="model-projects">Projecten / onderdelen</button>
 
       <div class="tags-editor">
         <div class="description-label">
@@ -6053,6 +6109,34 @@ function renderInspectorDetails(f) {
   moveViewerToPreviewTab();
   setupDescriptionEditor(f);
   setupTagEditor(f);
+  document.getElementById('model-projects').onclick = () => projectsUI.open();
+  const checkButton = document.getElementById('model-check-run');
+  if (checkButton) checkButton.onclick = async () => {
+    checkButton.disabled = true;
+    let parsed;
+    try {
+      parsed = await parseModelAsync((await serverStorage.fileData(f)).slice(0), f.name);
+      if (!parsed) throw new Error('Model niet leesbaar. Afmetingen en modelcontrole zijn niet beschikbaar.');
+      f.stats = parsed.stats; f.modelCheck = parsed.modelCheck;
+      await saveFile(f);
+      if (state.selectedFile === f.id) { renderInspectorDetails(f); setInspectorTab('info'); }
+    } finally { parsed?.geometry?.dispose(); checkButton.disabled = false; }
+  };
+}
+
+function renderModelCheck(f) {
+  if ((f.type || getFileType(f.name)) === 'sla') return '<section class="model-check"><h3>Modelcontrole</h3><p>Dit is een gesliced resinbestand zonder mesh. Geometriecontrole is niet beschikbaar.</p></section>';
+  const check = f.modelCheck;
+  const labels = { boundaryEdges: 'Open randen', nonManifoldEdges: 'Niet-manifold randen', windingEdges: 'Afwijkende vlakrichting',
+    degenerateTriangles: 'Vlakken zonder oppervlak', duplicateTriangles: 'Dubbele vlakken', invalidTriangles: 'Ongeldige vlakken' };
+  const issues = check ? Object.entries(labels).filter(([key]) => check[key] > 0) : [];
+  return `<section class="model-check"><h3>Afmetingen en modelcontrole</h3>
+    <p>${f.type === 'stl' ? 'STL heeft geen eenheid; afmetingen worden geïnterpreteerd als millimeters.' : 'Afmetingen gelden voor de geladen 3MF-geometrie, inclusief plaatsing van onderdelen.'}
+    ${f.stats?.approximate ? 'Let op: vereenvoudigde 3MF-parser gebruikt. Schaal en plaatsing zijn niet betrouwbaar; controleer de afmetingen in Bambu Studio.' : ''}</p>
+    <p>${!check?.checked ? 'Nog niet gecontroleerd. Klik op controleren om de geometrie te laden.' : check.topologySkipped ? 'Randcontrole overgeslagen: model heeft meer dan 200.000 driehoeken. Controleer het model in je slicer.' : issues.length ? 'Mogelijke meshproblemen gevonden:' : 'Geen problemen gevonden bij de basiscontrole van randen en vlakken.'}</p>
+    ${issues.map(([key,label]) => slaInfoRow(label, check[key].toLocaleString())).join('')}
+    <p>Basiscontrole met een punttolerantie van 0,00001 mm. Zelfdoorsnijdingen, wanddikte en printbaarheid worden niet gecontroleerd. Er wordt niets gerepareerd.</p>
+    <button class="btn" id="model-check-run">${check?.checked ? 'Opnieuw controleren' : 'Afmetingen en mesh controleren'}</button></section>`;
 }
 
 function moveViewerToPreviewTab() {
@@ -6338,6 +6422,30 @@ async function saveFile(f) {
   await dbPut('files', f);
 }
 
+let lastImportReport = null;
+document.getElementById('btn-duplicate-report').onclick = () => showDuplicateReport();
+function showDuplicateReport() {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'archive-dialog';
+  dialog.setAttribute('aria-label', 'Importrapport');
+  const report = lastImportReport;
+  dialog.innerHTML = `<div class="feature-heading"><h2>Importrapport</h2><button class="btn" data-close>Sluiten</button></div>
+    <p>Identieke bestandsinhoud wordt herkend, ook bij een andere bestandsnaam. Een andere export of schaal kan een ander bestand opleveren en wordt niet als identiek beschouwd.</p>
+    <p>${report ? `${report.imported} geïmporteerd · ${report.duplicates.length} identieke bestanden overgeslagen.` : 'Nog geen import uitgevoerd in deze sessie.'}</p>
+    ${report?.duplicates.map((entry,i) => {
+      const file = state.files.find(f => f.id === entry.id);
+      const collection = state.collections.find(c => c.id === file?.collectionId);
+      return `<div class="duplicate-entry"><strong>${escapeHtml(entry.incoming)}</strong><p>Staat al in het archief als ${escapeHtml(entry.existing)} · ${escapeHtml(collection?.name || 'Zonder collectie')}</p>
+        ${file ? `<button class="btn" data-match="${i}">Bestaand model bekijken</button>` : '<p>Model is inmiddels verwijderd.</p>'}</div>`;
+    }).join('') || ''}`;
+  document.body.append(dialog);
+  dialog.querySelector('[data-close]').onclick = () => dialog.close();
+  dialog.querySelectorAll('[data-match]').forEach(button => button.onclick = () => {
+    dialog.close(); selectFile(report.duplicates[Number(button.dataset.match)].id);
+  });
+  dialog.addEventListener('close', () => dialog.remove()); dialog.showModal();
+}
+
 async function importSTLFiles(fileList, options = {}) {
   const validFiles = Array.from(fileList).filter(f => getFileType(f.name) !== null);
   if (validFiles.length === 0) {
@@ -6366,6 +6474,7 @@ async function importSTLFiles(fileList, options = {}) {
   let importedCount = 0;
   let skippedCount = 0;
   const skippedNames = [];
+  const duplicates = [];
 
   for (let i = 0; i < validFiles.length; i++) {
     const file = validFiles[i];
@@ -6376,6 +6485,8 @@ async function importSTLFiles(fileList, options = {}) {
 
     // Skip if we already have this exact content
     if (existingHashes.has(hash)) {
+      const match = exactDuplicate(state.files, hash);
+      duplicates.push({ incoming: file.name, id: match?.id, existing: match?.name || file.name });
       skippedCount++;
       if (skippedNames.length < 10) skippedNames.push(file.name);
       if (i % 3 === 0) await new Promise(r => setTimeout(r, 0));
@@ -6438,6 +6549,7 @@ async function importSTLFiles(fileList, options = {}) {
       subFormat: slaParsed?.subFormat || null,
       collectionId,
       stats,
+      modelCheck: parsed?.modelCheck || null,
       thumbnail: slaParsed?.thumbnail || null,
       // SLA files are "ready" once we've extracted their metadata; we never need
       // the deferred-preview flow because there's no 3D mesh to parse.
@@ -6484,6 +6596,8 @@ async function importSTLFiles(fileList, options = {}) {
   render();
 
   // Report what happened
+  lastImportReport = { imported: importedCount, duplicates };
+  if (duplicates.length) showDuplicateReport();
   if (skippedCount > 0) {
     const examples = skippedNames.slice(0, 5).join(', ');
     const more = skippedCount > 5 ? t('toast.skipped_more', skippedCount - 5) : '';
@@ -6573,7 +6687,7 @@ function downloadFile(id) {
 }
 
 // ============ BACKUP & RESTORE ============
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 const BACKUP_MAGIC = 'FORGE_STL_BACKUP';
 
 // Convert ArrayBuffer to base64 in chunks (to avoid stack overflow on big files)
@@ -6598,7 +6712,8 @@ function base64ToBuffer(base64) {
 }
 
 async function createBackup() {
-  if (state.files.length === 0 && state.collections.length === 0) {
+  const projects = await serverStorage.getAll('projects');
+  if (state.files.length === 0 && state.collections.length === 0 && projects.length === 0) {
     alert(t('alert.empty_backup'));
     return;
   }
@@ -6610,6 +6725,7 @@ async function createBackup() {
     version: BACKUP_VERSION,
     createdAt: new Date().toISOString(),
     collections: state.collections,
+    projects,
     files: [],
   };
 
@@ -6626,6 +6742,7 @@ async function createBackup() {
       subFormat: f.subFormat || null,
       collectionId: f.collectionId,
       stats: f.stats,
+      modelCheck: f.modelCheck || null,
       thumbnail: f.thumbnail, // base64 PNG dataURL — already a string
       previewStatus: f.previewStatus,
       description: f.description || '',
@@ -6671,6 +6788,20 @@ function validateBackup(backup) {
       || !/^[A-Za-z0-9+/]*={0,2}$/.test(f.data)
       || (f.collectionId != null && !collections.has(f.collectionId))) throw new Error('Ongeldig bestand in backup.');
     ids.add(f.id);
+  }
+  if (backup.version >= 2 && !Array.isArray(backup.projects)) throw new Error('Projecten ontbreken in de backup.');
+  const projectIds = new Set();
+  for (const project of backup.projects || []) {
+    if (!validId(project.id) || projectIds.has(project.id) || typeof project.name !== 'string' || !project.name.trim()
+      || new TextEncoder().encode(project.name).length > 200 || typeof project.description !== 'string'
+      || new TextEncoder().encode(project.description).length > 8000 || !Array.isArray(project.parts) || project.parts.length > 500) throw new Error('Ongeldig project in backup.');
+    projectIds.add(project.id);
+    const seen = new Set();
+    for (const part of project.parts) {
+      if (!ids.has(part.fileId) || seen.has(part.fileId) || !Number.isInteger(part.quantity) || part.quantity < 1 || part.quantity > 9999
+        || typeof part.notes !== 'string' || new TextEncoder().encode(part.notes).length > 2000) throw new Error('Ongeldig projectonderdeel in backup.');
+      seen.add(part.fileId);
+    }
   }
 }
 
@@ -6770,6 +6901,7 @@ async function performRestore(mode) {
   // Restore files
   let restoredCount = 0;
   let dupSkipped = 0;
+  const fileIdMap = new Map();
   for (let i = 0; i < backup.files.length; i++) {
     const f = backup.files[i];
     updateProgress(i, backup.files.length, f.name);
@@ -6787,7 +6919,10 @@ async function performRestore(mode) {
     const buf = base64ToBuffer(f.data);
     // Compute our own hash; imported metadata is not authoritative.
     const hash = await hashBuffer(buf.slice(0));
-    if (existingFileHashes.has(hash)) { dupSkipped++; continue; }
+    if (existingFileHashes.has(hash)) {
+      fileIdMap.set(f.id, exactDuplicate(state.files, hash).id);
+      dupSkipped++; continue;
+    }
     existingFileHashes.add(hash);
 
     const fileObj = {
@@ -6800,6 +6935,7 @@ async function performRestore(mode) {
       subFormat: f.subFormat || (getFileType(f.name) === 'sla' ? getSLASubFormat(f.name) : null),
       collectionId,
       stats: f.stats,
+      modelCheck: f.modelCheck || null,
       thumbnail: f.thumbnail,
       previewStatus: f.previewStatus || (f.thumbnail ? 'ready' : (getFileType(f.name) === '3mf' ? 'pending' : 'ready')),
       description: f.description || '',
@@ -6810,11 +6946,16 @@ async function performRestore(mode) {
 
     await saveFile(fileObj);
     state.files.push(fileObj);
+    fileIdMap.set(f.id, fileObj.id);
     restoredCount++;
 
     if (i % 3 === 0) await new Promise(r => setTimeout(r, 0));
   }
 
+  // Fresh IDs preserve existing projects when a backup is merged, including same-ID projects.
+  for (const project of backup.projects || []) {
+    await serverStorage.put('projects', remapProject(project, fileIdMap, uid()));
+  }
   closeProgress();
   render();
 

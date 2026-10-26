@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/storage.test.mjs tests/collection-drag.test.mjs tests/bulk-selection.test.mjs",
+    "test": "node --test tests/storage.test.mjs tests/collection-drag.test.mjs tests/bulk-selection.test.mjs tests/model-analysis.test.mjs",
     "check": "node tools/check.mjs",
     "test:server": "node --test tests/server.test.mjs"
   }
