@@ -1,5 +1,17 @@
 # 3DLens
 
+## WordPress-promotiethema
+
+`wordpress/3dlens/` bevat een zelfstandig klassiek thema voor de openbare promotiewebsite. De privéapp is een aparte installatie. Het thema bevat uitleg over functies, eigen hosting, opslag en herstelmail, download- en handleidinglinks, uitklapvragen en templates voor nieuws en gewone pagina's. Onder Weergave > Customizer > 3DLens promotie zijn 24 velden aanpasbaar. Er zijn geen pagebuilder, externe fonts of scripts nodig.
+
+Installeer het thema als ZIP via Weergave > Thema's > Nieuw thema > Thema uploaden. Lees `wordpress/3dlens/README.txt` voor het overschakelen vanaf de bestaande openbare `index.html`, backups en terugdraaien. Laat de privéapp, downloads en handleiding staan.
+
+Het ZIP wordt gebouwd met `python tools/build-wordpress-theme.py --output PAD_NAAR_ZIP`. De generator gebruikt de bestaande openbare vormgeving en neemt alleen de themamap mee. De eigen illustratie, GPL-licentie en WordPress-themascreenshot zijn inbegrepen.
+
+Controle: alle negen PHP-bestanden zijn syntactisch gecontroleerd met PHP 8.3. `php tools/preview-wordpress-theme.php PAD_NAAR_VOORBEELDMAP` controleert 24 Customizer-instellingen, sanitizers, escaping, de stylesheetversie en de gerenderde homepage met een geïsoleerde WordPress-functiesimulatie. Browsercontrole van de gerenderde pagina: brede en 390px-smalle weergave, sectienavigatie en een uitklapvraag geslaagd. Het thema is inmiddels door de gebruiker geactiveerd op de hosting.
+
+Thema 1.0.1 herstelt een cacheconflict: het echte stylesheet op de server kwam overeen met het installatiepakket, maar de browser kreeg op het adres met `ver=1.0.0` nog CSS van een andere indeling. De stylesheet-URL gebruikt nu een SHA-256 van de inhoud, zodat een gewijzigde stylesheet een eigen cacheversie krijgt. `functions.php` en de stylesheetheader zijn na lokale controle live bijgewerkt; de vorige bestanden zijn in de werkmap geback-upt. De live WordPress-homepage laadt de nieuwe versie en toont de bedoelde indeling zonder horizontale overflow. Geen WordPress-inhoud, thema-instellingen of privéappgegevens gewijzigd.
+
 Privéarchief voor STL-, 3MF- en resin/SLA-printbestanden, gebaseerd op de bestaande `stl-organizer14.html`. Repository: https://github.com/jeroenkoomen1975/3dlens.
 
 Hosting: Hostinger Business Web Hosting. Website: **https://koomen.3dlens.cloud/**. Het subdomein, de bestanden, database, privéconfiguratie en het eigenaarsaccount zijn ingericht. Database en gebruiker heten `u179310343_3dlens`. De gebruiker heeft de echte credentials rechtstreeks op Hostinger ingevuld; die staan niet in deze repository.
@@ -35,6 +47,18 @@ public_html/          Documentroot van je domein of subdomein
 ```
 
 ## Opslag en toegang
+
+Versie 1.4.0 (26 oktober 2026) gebruikt `3dlens-private/release.php` als centrale bron voor het versienummer, de releasedatum en de releasegeschiedenis. De kop van de app en About tonen dezelfde versie. De link Wijzigingen per versie in About opent `changelog.php` in een nieuw tabblad. Deze route vereist de bestaande login, sluit de sessielock na controle en rendert de privéweergave `changelog-view.php`. De geschiedenis onderscheidt de huidige online uitgave van basisversie 1.3.0; tussenliggende, niet genummerde hostingupdates krijgen geen achteraf verzonnen releaseversies. Het About-venster is begrensd tot het scherm en verticaal scrollbaar.
+
+Bij een volgende release wijzig je de centrale versiegegevens en voeg je een geschiedenisblok toe in `release.php`. Installatiepakketten nemen de twee privébestanden en de beveiligde publieke route mee. De vier gewijzigde/nieuwe bestanden zijn op Hostinger geplaatst; opgeslagen inhoud is opnieuw ingelezen en vergeleken. PHP-lint, JavaScript-controle, pakketcontrole, lokale browsercontrole van About en de geschiedenislink zijn geslaagd. Live gecontroleerd dat de wijzigingspagina zonder sessie naar de login verwijst. Het openbare installatiepakket 1.0.0 en het WordPress-thema zijn niet gewijzigd.
+
+Modellen kun je met de muis vanuit hun kaart (ook vanaf de miniatuur) naar een collectie in de linkerzijbalk slepen. De doelcollectie krijgt een stippelrand. Loslaten op Niet-gecategoriseerd verwijdert alleen de collectietoewijzing. Alle bestanden is een overzicht en geen verplaatsdoel. Bestanden vanaf je computer en mappen kun je ook rechtstreeks op een collectie loslaten; ondersteunde bestanden worden dan in die collectie geïmporteerd. Loslaten elders behoudt de bestaande importwerkwijze. Het selectiemenu in het detailpaneel blijft beschikbaar, onder meer voor apparaten zonder muis.
+
+Vinkjes op de modelkaarten en Ctrl+klik (Mac: Cmd+klik) ondersteunen meervoudige selectie. De actiebalk toont het aantal geselecteerde modellen, Alles in beeld, een doelcollectie, Verplaatsen, Verwijderen en Deselecteren. Een geselecteerde groep kan ook samen worden versleept. Bij wisselen van collectie of zoekopdracht vervalt de selectie, zodat verborgen modellen niet onbedoeld worden verwerkt. Groepsacties gebruiken opeenvolgende geauthenticeerde API-verzoeken; ze vormen geen gezamenlijke database-transactie. Bij een fout stopt de actie, toont het aantal bevestigde successen en bewaart de resterende selectie. Verwijderen vraagt één bevestiging met het aantal en is definitief. Alleen geslaagde verwijderingen verdwijnen uit de interface en previewcache.
+
+De groepsselectie staat op Hostinger; de opgeslagen bron is na herladen vergeleken met de lokale versie. Acht aanvullende tests dekken selectie, groepsverplaatsing, annuleren, geslaagde en gedeeltelijk mislukte verwijderingen, verouderde doelen en gelijktijdige acties. Alle 24 Node-tests, de JavaScript-syntaxiscontrole en PHP-lint slagen. In een lokale browserkopie met uitsluitend voorbeeldgegevens zijn vinkjes, Ctrl+klik, Alles in beeld, groepsverplaatsing via de knop, groepsslepen en behoud na herladen gecontroleerd. Er zijn geen productiemodellen verwijderd of verplaatst voor deze controle. De openbare appdownload 1.0.0 is niet vervangen; de werkmap bevat een apart updatepakket.
+
+Verplaatsen gebruikt dezelfde geauthenticeerde API met CSRF en wijzigt alleen metadata; er worden geen modelbytes opnieuw geüpload of naar een andere opslag verplaatst. De lokale collectie wordt pas na een geslaagde opslag bijgewerkt. De wijziging staat op Hostinger; het opgeslagen archive.php is na herladen vergeleken met de lokale bron. Zes nieuwe regressietests controleren echte drop-handlers en opgeslagen collectiegegevens, inclusief opslagfouten en externe bestanden; de bestaande tien opslagtests, JavaScript-controle en PHP-lint slagen. In een lokale browserkopie met uitsluitend voorbeeldgegevens zijn een STL en 3MF door een echte sleepbeweging verplaatst en na herladen teruggevonden. Live controle achter de eigenaarslogin vereist opnieuw inloggen; het productiedata-archief is niet gebruikt voor testmutaties.
 
 MySQL bewaart gebruikersnaam, wachtwoordhash, collecties, tags, omschrijvingen, miniaturen, bestandsnamen en modelstatistieken. De originele 3D-bestanden staan als willekeurig benoemde `.bin`-bestanden buiten `public_html`. Downloads lopen via de geauthenticeerde API. De server berekent zelf de SHA-256 en bestandsgrootte; dubbele inhoud wordt geweigerd.
 

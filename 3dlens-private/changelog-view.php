@@ -1,0 +1,16 @@
+<?php
+if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
+?><!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Wijzigingen per versie · 3DLens</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0d0e0c;color:#e8e6df;font:16px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:940px;margin:auto;padding:45px 24px 80px}a{color:#d4ff3a;text-underline-offset:4px}a:focus-visible{outline:2px solid #d4ff3a;outline-offset:5px}.brand{font-size:25px;font-weight:800;letter-spacing:-1px;text-decoration:none}.top{display:flex;justify-content:space-between;gap:20px;align-items:center;padding-bottom:25px;border-bottom:1px solid #2d2f2a}.eyebrow{color:#d4ff3a;font:12px ui-monospace,monospace;letter-spacing:2px;text-transform:uppercase;margin-top:48px}h1{font-size:clamp(32px,6vw,52px);line-height:1.1;letter-spacing:-2px;margin:18px 0}h2{font-size:25px;line-height:1.3;margin:14px 0 22px}.intro,.notes{color:#b4b6ac}.versions{display:flex;gap:20px;flex-wrap:wrap;margin:28px 0 42px}article{background:#1a1c19;border:1px solid #2d2f2a;border-radius:12px;margin-bottom:25px;padding:30px;scroll-margin-top:20px}.meta{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:13px;color:#b4b6ac}.version{background:#d4ff3a;color:#0d0e0c;padding:4px 12px;font-weight:800;border-radius:5px}ul{padding-left:22px}li{margin:11px 0}.notes{font-size:14px;border-top:1px solid #3d3f38;margin-top:24px;padding-top:12px}.notes p{margin:12px 0}.footer{color:#898b81;font-size:13px;margin-top:35px}@media(max-width:550px){main{padding:25px 18px 50px}article{padding:22px}.top{font-size:13px}}
+</style></head><body><main>
+<header class="top"><a class="brand" href="index.php">◉ 3DLens</a><a href="index.php">← Terug naar mijn archief</a></header>
+<p class="eyebrow">Releasegeschiedenis</p><h1>Wat is er nieuw<br>in 3DLens?</h1><p class="intro">Bekijk de wijzigingen per versie van je archief. Je gebruikt versie <strong><?= h(app_release()['version']) ?></strong>.</p>
+<nav class="versions" aria-label="Versies"><?php foreach (app_changelog() as $entry): ?><a href="#v<?= h(str_replace('.', '-', $entry['version'])) ?>">Versie <?= h($entry['version']) ?></a><?php endforeach; ?></nav>
+<?php foreach (app_changelog() as $entry): ?>
+<article id="v<?= h(str_replace('.', '-', $entry['version'])) ?>"><div class="meta"><span class="version">Versie <?= h($entry['version']) ?></span><?php if (isset($entry['date'])): ?><time datetime="<?= h($entry['date']) ?>"><?= h($entry['date_label']) ?></time><?php endif; ?></div>
+<h2><?= h($entry['title']) ?></h2><ul><?php foreach ($entry['changes'] as $change): ?><li><?= h($change) ?></li><?php endforeach; ?></ul>
+<?php if (!empty($entry['notes'])): ?><div class="notes"><?php foreach ($entry['notes'] as $note): ?><p><?= h($note) ?></p><?php endforeach; ?></div><?php endif; ?></article>
+<?php endforeach; ?><p class="footer">Wijzigingsgeschiedenis van de applicatie. Het WordPress-promotiethema en oudere installatiepakketten kunnen een eigen versienummer hebben.</p>
+</main></body></html>

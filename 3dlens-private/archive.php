@@ -1,11 +1,13 @@
 <?php
 if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
+require_once __DIR__ . '/release.php';
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
 <meta charset="UTF-8" />
 <meta name="robots" content="noindex,nofollow" />
+<meta name="app-version" content="<?= h(app_release()['version']) ?>" />
 <meta name="csrf-token" content="<?= h($csrf) ?>" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>3DLens — STL · 3MF · SLA Archief</title>
@@ -422,6 +424,15 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
   }
 
   /* GRID */
+  .bulk-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:10px 24px; background:var(--panel); border-bottom:1px solid var(--line); font-size:11px; }
+  .bulk-toolbar label { display:flex; gap:7px; align-items:center; cursor:pointer; }
+  .bulk-toolbar select { max-width:220px; padding:7px; color:var(--ink); background:var(--bg); border:1px solid var(--line-bright); font:inherit; }
+  .bulk-toolbar input, .card-check { accent-color:var(--accent); }
+  .bulk-toolbar button:disabled, .bulk-toolbar select:disabled { opacity:.4; cursor:default; }
+  .bulk-hint { color:var(--ink-faint); font-size:10px; }
+  .card.bulk-selected { outline:2px solid var(--accent); outline-offset:-2px; }
+  .card-select { position:absolute; z-index:5; right:8px; top:8px; display:flex; padding:6px; background:var(--panel); border:1px solid var(--line-bright); cursor:pointer; }
+  .card-check { width:17px; height:17px; margin:0; cursor:pointer; }
   .grid-container {
     flex: 1;
     overflow-y: auto;
@@ -1784,6 +1795,13 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
   }
 
   /* DRAG & DROP */
+  .card[draggable="true"] { cursor: grab; }
+  .card.is-dragging { opacity: .45; }
+  .collection-item.drop-target {
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+    background: rgba(212, 255, 58, .12);
+  }
   .drop-overlay {
     position: fixed;
     inset: 0;
@@ -1834,8 +1852,14 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
   .about-modal {
     width: 460px !important;
     padding: 0 !important;
-    overflow: hidden;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
   }
+  .about-history { padding:14px 28px; text-align:center; border-bottom:1px solid var(--line); }
+  .about-history a { color:var(--accent); font-size:12px; text-underline-offset:4px; }
+  .about-history a:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
 
   .about-hero {
     padding: 36px 28px 24px;
@@ -2181,7 +2205,7 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
       <div>
         <div class="brand-name">3DLens</div>
       </div>
-      <div class="brand-sub" id="brand-sub-text">3D Archief // v1.3</div>
+      <div class="brand-sub" id="brand-sub-text">3D Archief // v<?= h(app_release()['version']) ?></div>
     </div>
     <div class="header-actions">
       <a href="onedrive.php" class="btn" style="text-decoration:none">OneDrive</a>
@@ -2265,6 +2289,15 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
       <div class="toolbar-right">
         <input type="text" class="search" id="search" placeholder="Zoek naam of beschrijving..." />
       </div>
+    </div>
+    <div class="bulk-toolbar" aria-label="Selectieacties">
+      <label><input type="checkbox" id="bulk-select-all"><span id="bulk-all-label">Alles in beeld</span></label>
+      <span id="bulk-count" role="status" aria-live="polite"></span>
+      <select id="bulk-move-select" aria-label="Doelcollectie"></select>
+      <button class="btn" id="bulk-move">Verplaatsen</button>
+      <button class="btn" id="bulk-delete">Verwijderen</button>
+      <button class="btn" id="bulk-clear">Deselecteren</button>
+      <span class="bulk-hint" id="bulk-hint">Vink modellen aan of gebruik Ctrl+klik (Mac: Cmd+klik).</span>
     </div>
     <div class="grid-container" id="grid-container">
       <div class="empty" id="empty-state">
@@ -2384,11 +2417,11 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
     <div class="about-grid">
       <div class="about-row">
         <span class="about-key" id="about-key-version">Versie</span>
-        <span class="about-val accent">1.3.0</span>
+        <span class="about-val accent"><?= h(app_release()['version']) ?></span>
       </div>
       <div class="about-row">
         <span class="about-key" id="about-key-release">Release</span>
-        <span class="about-val">28 april 2026</span>
+        <span class="about-val"><?= h(app_release()['date_label']) ?></span>
       </div>
       <div class="about-row">
         <span class="about-key" id="about-key-supports">Ondersteunt</span>
@@ -2404,6 +2437,7 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
       </div>
     </div>
 
+    <div class="about-history"><a id="about-changelog" href="changelog.php" target="_blank" rel="noopener">Wijzigingen per versie ↗</a></div>
     <div class="about-credit">
       <div class="about-credit-label" id="about-author-label">Gemaakt door</div>
       <a href="https://jroen.nl" target="_blank" rel="noopener noreferrer" class="about-link">
@@ -3475,6 +3509,23 @@ Object.assign(TRANSLATIONS.de, {"about.storage_value": "MySQL + private Serverda
 Object.assign(TRANSLATIONS.es, {"about.storage_value": "MySQL + archivos privados del servidor", "help.multi_pc_text": "Tu archivo se guarda en el servidor. Inicia sesión en cada dispositivo con la misma cuenta.", "help.step1": "Abre la dirección HTTPS de tu sitio 3DLens.", "help.step2": "Inicia sesión con tu cuenta de propietario.", "help.step3": "Importa tus archivos 3D y crea colecciones.", "help.step4": "Los cambios se guardan en el servidor. Actualiza la página en el otro dispositivo.", "help.step5": "Usa Copia para guardar otra copia fuera del hosting.", "help.warning": "<strong>Atención:</strong> mantén tu contraseña privada y edita preferiblemente en una sola pestaña. Actualiza antes de editar desde otro dispositivo.", "help.restore_text": "Selecciona un archivo <strong>.forge</strong> en <strong>Restaurar</strong>. La copia se combina con tu archivo del servidor y se conservan los archivos existentes."});
 Object.assign(TRANSLATIONS.pap, {"about.storage_value": "MySQL + archivonan privá riba servidor", "help.multi_pc_text": "Bo archivo ta riba e servidor. Inisiá seshon riba kada aparato ku e mesun kuenta.", "help.step1": "Habri e adrès HTTPS di bo wèpsait 3DLens.", "help.step2": "Inisiá seshon ku bo kuenta di doño.", "help.step3": "Importá bo archivonan 3D i krea kolekshonnan.", "help.step4": "Kambionan ta wòrdu wardá riba servidor. Refreská e página riba e otro aparato.", "help.step5": "Usa Backup pa un kopia adishonal pafó di bo hosting.", "help.warning": "<strong>Atenshon:</strong> tene bo kontraseña privá i traha preferiblemente den un tab. Refreská promé ku bo hasi kambionan riba un otro aparato.", "help.restore_text": "Skohe un archivo <strong>.forge</strong> ku <strong>Restorá</strong>. E backup ta wòrdu uni ku bo archivo riba servidor; archivonan eksistente ta keda."});
 
+for (const [lang, labels] of Object.entries({
+  nl: ['Selecteer {name}', '{n} geselecteerd', 'Doelcollectie', 'Verplaatsen', 'Verwijderen', 'Deselecteren', 'Alles in beeld', 'Vink modellen aan of gebruik Ctrl+klik (Mac: Cmd+klik).', 'Bezig met opslaan…', '{n} bestanden verwerkt.', '{n} geselecteerde bestanden definitief verwijderen? De bestanden worden ook uit de gekoppelde opslag verwijderd. Dit kan niet ongedaan worden gemaakt.', '{done} van {total} verwerkt. Gestopt bij een fout; de resterende selectie kun je opnieuw proberen.'],
+  en: ['Select {name}', '{n} selected', 'Destination collection', 'Move', 'Delete', 'Clear selection', 'All visible', 'Use checkboxes or Ctrl+click (Mac: Cmd+click).', 'Saving…', '{n} files processed.', 'Permanently delete {n} selected files? Files are also removed from connected storage. This cannot be undone.', '{done} of {total} processed. Stopped on an error; you can retry the remaining selection.'],
+  de: ['{name} auswählen', '{n} ausgewählt', 'Zielsammlung', 'Verschieben', 'Löschen', 'Auswahl aufheben', 'Alle sichtbaren', 'Kontrollkästchen oder Strg+Klick (Mac: Cmd+Klick).', 'Wird gespeichert…', '{n} Dateien verarbeitet.', '{n} ausgewählte Dateien endgültig löschen? Sie werden auch aus dem verbundenen Speicher entfernt. Dies kann nicht rückgängig gemacht werden.', '{done} von {total} verarbeitet. Bei einem Fehler gestoppt; die übrige Auswahl kann erneut versucht werden.'],
+  es: ['Seleccionar {name}', '{n} seleccionados', 'Colección de destino', 'Mover', 'Eliminar', 'Desmarcar', 'Todos los visibles', 'Usa las casillas o Ctrl+clic (Mac: Cmd+clic).', 'Guardando…', '{n} archivos procesados.', '¿Eliminar permanentemente {n} archivos seleccionados? También se eliminan del almacenamiento conectado. No se puede deshacer.', '{done} de {total} procesados. Se detuvo por un error; puedes reintentar con los restantes.'],
+  pap: ['Skohe {name}', '{n} selektá', 'Kolekshon di destino', 'Move', 'Eliminá', 'Kita selekshon', 'Tur visibel', 'Usa e vinkinán òf Ctrl+klik (Mac: Cmd+klik).', 'Ta warda…', '{n} archivo prosesá.', 'Eliminá {n} archivo selektá permanentemente? Nan ta wòrdu kitá tambe for di e almacen konektá. Esaki no por wòrdu deshasí.', '{done} di {total} prosesá. A para pa un eror; por purba e selekshon restante atrobe.'],
+})) {
+  const keys = ['select_file','count','target','move','delete','clear','all','hint','busy','done','confirm_delete','partial'];
+  keys.forEach((key, i) => {
+    TRANSLATIONS[lang]['bulk.' + key] = key === 'select_file' ? name => labels[i].replace('{name}', name)
+      : key === 'partial' ? (done, total) => labels[i].replace('{done}', done).replace('{total}', total)
+      : ['count','done','confirm_delete'].includes(key) ? n => labels[i].replace('{n}', n) : labels[i];
+  });
+}
+
+for (const [lang, label] of Object.entries({nl:'Wijzigingen per versie ↗',en:'Changes by version ↗',de:'Änderungen pro Version ↗',es:'Cambios por versión ↗',pap:'Kambionan pa vershon ↗'})) TRANSLATIONS[lang]['about.changelog'] = label;
+
 function detectLanguage() {
   const stored = localStorage.getItem('3dlens_lang');
   if (stored && TRANSLATIONS[stored]) return stored;
@@ -3507,7 +3558,8 @@ function setLanguage(lang) {
 function applyStaticTranslations() {
   document.title = `3DLens — ${t('app.subtitle')}`;
   // Header
-  setText('brand-sub-text', `${t('app.subtitle')} // v1.3`);
+  setText('brand-sub-text', `${t('app.subtitle')} // v${document.querySelector('meta[name="app-version"]').content}`);
+  setText('about-changelog', t('about.changelog'));
   setText('btn-about-text', t('header.about'));
   setText('btn-settings-text', t('header.settings'));
   setText('settings-data-label', t('header.settings_data'));
@@ -3632,6 +3684,8 @@ const state = {
   collections: [],   // { id, name }
   activeCollection: null, // null = all
   selectedFile: null,
+  selectedIds: new Set(),
+  bulkBusy: false,
   search: '',
   loading: true,     // true while the private server archive is loading
 };
@@ -5482,11 +5536,27 @@ function renderCollections() {
   list.innerHTML = html;
 
   list.querySelectorAll('.collection-item').forEach(el => {
+    if (el.dataset.id) {
+      el.addEventListener('dragover', e => {
+        if (!draggedArchiveFile && !Array.from(e.dataTransfer?.types || []).includes('Files')) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = draggedArchiveFile ? 'move' : 'copy';
+        document.querySelectorAll('.collection-item.drop-target').forEach(other => {
+          if (other !== el) other.classList.remove('drop-target');
+        });
+        el.classList.add('drop-target');
+      });
+      el.addEventListener('dragleave', e => {
+        if (!el.contains(e.relatedTarget)) el.classList.remove('drop-target');
+      });
+    }
     el.addEventListener('click', e => {
       if (e.target.closest('[data-delete]')) return;
       if (e.target.closest('[data-edit]')) return;
       if (e.target.classList.contains('col-name-input')) return;
       const id = el.dataset.id;
+      if (state.bulkBusy) return;
+      state.selectedIds.clear();
       state.activeCollection = id === '' ? null : id;
       render();
     });
@@ -5664,7 +5734,8 @@ function renderGrid() {
     }
 
     return `
-    <div class="card ${state.selectedFile === f.id ? 'selected' : ''}" data-id="${f.id}" title="${escapeHtml([f.name, descPreview, ...userTags.map(tag => '#' + tag)].filter(Boolean).join(' · '))}">
+    <div class="card ${state.selectedFile === f.id ? 'selected' : ''} ${state.selectedIds.has(f.id) ? 'bulk-selected' : ''}" draggable="true" data-id="${f.id}" title="${escapeHtml([f.name, descPreview, ...userTags.map(tag => '#' + tag)].filter(Boolean).join(' · '))}">
+      <label class="card-select" draggable="false"><input class="card-check" type="checkbox" aria-label="${escapeHtml(t('bulk.select_file', f.name))}" ${state.selectedIds.has(f.id) ? 'checked' : ''} ${state.bulkBusy ? 'disabled' : ''}></label>
       <div class="card-preview">
         <div class="card-badge">${fileType}</div>
         ${hasDescription ? `<div class="card-desc-mark" title="${t('detail.has_description')}">≡</div>` : ''}
@@ -5682,12 +5753,30 @@ function renderGrid() {
   `;}).join('');
 
   grid.querySelectorAll('.card').forEach(el => {
-    el.addEventListener('click', () => selectFile(el.dataset.id));
+    el.querySelectorAll('img').forEach(img => { img.draggable = false; });
+    el.addEventListener('dragstart', e => {
+      if (state.bulkBusy || e.target.closest('.card-select')) { e.preventDefault(); return; }
+      if (!e.dataTransfer) return;
+      draggedArchiveFile = el.dataset.id;
+      draggedArchiveFiles = state.selectedIds.has(draggedArchiveFile) ? [...state.selectedIds] : [draggedArchiveFile];
+      e.dataTransfer.setData(ARCHIVE_DRAG_TYPE, draggedArchiveFile);
+      e.dataTransfer.effectAllowed = 'move';
+      el.classList.add('is-dragging');
+    });
+    el.addEventListener('dragend', clearArchiveDrag);
+    el.querySelector('.card-select').addEventListener('click', e => e.stopPropagation());
+    el.querySelector('.card-check').addEventListener('change', () => toggleFileSelection(el.dataset.id));
+    el.addEventListener('click', e => {
+      if (e.ctrlKey || e.metaKey) toggleFileSelection(el.dataset.id);
+      else if (!state.bulkBusy) { state.selectedIds.clear(); selectFile(el.dataset.id); }
+    });
 
     const preview = el.querySelector('.card-preview');
     if (preview) {
       preview.addEventListener('click', e => {
         e.stopPropagation();
+        if (state.bulkBusy) return;
+        if (e.ctrlKey || e.metaKey) { toggleFileSelection(el.dataset.id); return; }
         openFullscreenPreview(el.dataset.id);
       });
     }
@@ -6153,12 +6242,93 @@ function renderStatusbar() {
 
 function render() {
   renderCollections();
+  renderBulkToolbar();
   renderGrid();
   renderInspector();
   renderStatusbar();
 }
 
 // ============ ACTIONS ============
+// ============ BULK SELECTION ============
+function toggleFileSelection(id) {
+  if (state.bulkBusy || !state.files.some(f => f.id === id)) return;
+  if (state.selectedIds.has(id)) state.selectedIds.delete(id);
+  else state.selectedIds.add(id);
+  renderBulkToolbar();
+  renderGrid();
+}
+
+function renderBulkToolbar() {
+  const visible = getFilesForView();
+  const visibleIds = new Set(visible.map(f => f.id));
+  for (const id of state.selectedIds) if (!visibleIds.has(id)) state.selectedIds.delete(id);
+  const count = state.selectedIds.size;
+  document.getElementById('bulk-count').textContent = t('bulk.count', count);
+  const all = document.getElementById('bulk-select-all');
+  all.checked = visible.length > 0 && count === visible.length;
+  all.indeterminate = count > 0 && count < visible.length;
+  all.disabled = state.bulkBusy || !visible.length;
+  const sel = document.getElementById('bulk-move-select');
+  const previous = sel.value;
+  sel.innerHTML = `<option value="">${t('inspector.move_placeholder')}</option><option value="__none__">${t('sidebar.uncategorized')}</option>` + state.collections.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+  if ([...sel.options].some(o => o.value === previous)) sel.value = previous;
+  sel.disabled = state.bulkBusy || !count;
+  sel.setAttribute('aria-label', t('bulk.target'));
+  for (const action of ['move', 'delete', 'clear']) {
+    const button = document.getElementById('bulk-' + action);
+    button.textContent = t('bulk.' + action);
+    button.disabled = state.bulkBusy || !count;
+  }
+  document.getElementById('bulk-all-label').textContent = t('bulk.all');
+  document.getElementById('bulk-hint').textContent = state.bulkBusy ? t('bulk.busy') : t('bulk.hint');
+  document.getElementById('search').disabled = state.bulkBusy;
+  document.querySelectorAll('.card-check').forEach(box => { box.disabled = state.bulkBusy; });
+}
+
+async function runBulkAction(action, collectionId, ids = [...state.selectedIds]) {
+  if (state.bulkBusy || !['move', 'delete'].includes(action)) return;
+  const target = collectionId === '__none__' || collectionId === 'uncategorized' ? null : (collectionId || null);
+  if (action === 'move' && target && !state.collections.some(c => c.id === target)) return;
+  const files = [...new Set(ids)].map(id => state.files.find(f => f.id === id)).filter(Boolean);
+  if (!files.length) return;
+  if (action === 'delete' && !confirm(t('bulk.confirm_delete', files.length))) return;
+  state.bulkBusy = true;
+  let completed = 0;
+  renderBulkToolbar();
+  try {
+    for (const original of files) {
+      // Re-resolve after each write; storage error handling may reload the archive.
+      const file = state.files.find(f => f.id === original.id);
+      if (!file) continue;
+      if (action === 'move') {
+        if ((file.collectionId || null) !== target) {
+          const updated = { ...file, collectionId: target };
+          await saveFile(updated);
+          Object.assign(file, updated);
+        }
+      } else {
+        await dbDelete('files', file.id);
+        state.files = state.files.filter(f => f.id !== file.id);
+        const cached = geometryCache.get(file.id);
+        if (cached?.geometry) cached.geometry.dispose();
+        geometryCache.delete(file.id);
+        if (state.selectedFile === file.id) state.selectedFile = null;
+      }
+      state.selectedIds.delete(file.id);
+      completed++;
+      document.getElementById('bulk-count').textContent = `${completed} / ${files.length}`;
+    }
+    showToast(t('bulk.done', completed));
+  } catch (error) {
+    // Stop at the first failed request. Only confirmed writes are deselected.
+    showToast(t('bulk.partial', completed, files.length) + ' ' + (error.message || ''), 'warn', 12000);
+  } finally {
+    state.bulkBusy = false;
+    render();
+  }
+}
+// ============ END BULK SELECTION ============
+
 async function selectFile(id) {
   state.selectedFile = id;
   render();
@@ -6369,16 +6539,21 @@ async function createCollection(name) {
 
 async function moveFileToCollection(fileId, collectionId) {
   const f = state.files.find(x => x.id === fileId);
-  if (!f) return;
-  f.collectionId = collectionId === '__none__' ? null : (collectionId || null);
-  await saveFile(f);
+  const target = collectionId === '__none__' || collectionId === 'uncategorized' ? null : (collectionId || null);
+  if (!f || (target && !state.collections.some(c => c.id === target))) return false;
+  if ((f.collectionId || null) === target) return false;
+  const updated = { ...f, collectionId: target };
+  await saveFile(updated);
+  Object.assign(f, updated);
   render();
+  return true;
 }
 
 async function deleteFile(id) {
   if (!confirm(t('alert.confirm_delete_file'))) return;
   await dbDelete('files', id);
   state.files = state.files.filter(f => f.id !== id);
+  state.selectedIds.delete(id);
   // Clear cached geometry for this file
   const cached = geometryCache.get(id);
   if (cached && cached.geometry) cached.geometry.dispose();
@@ -6772,8 +6947,30 @@ document.getElementById('modal-collection').addEventListener('click', e => {
   if (e.target.id === 'modal-collection') closeModal();
 });
 
+document.getElementById('bulk-select-all').addEventListener('change', e => {
+  if (state.bulkBusy) return;
+  state.selectedIds.clear();
+  if (e.target.checked) getFilesForView().forEach(file => state.selectedIds.add(file.id));
+  renderBulkToolbar();
+  renderGrid();
+});
+document.getElementById('bulk-clear').addEventListener('click', () => {
+  if (state.bulkBusy) return;
+  state.selectedIds.clear();
+  renderBulkToolbar();
+  renderGrid();
+});
+document.getElementById('bulk-move').addEventListener('click', () => {
+  const select = document.getElementById('bulk-move-select');
+  if (!select.value) { select.focus(); return; }
+  runBulkAction('move', select.value);
+});
+document.getElementById('bulk-delete').addEventListener('click', () => runBulkAction('delete'));
+
 document.getElementById('search').addEventListener('input', e => {
+  state.selectedIds.clear();
   state.search = e.target.value;
+  renderBulkToolbar();
   renderGrid();
 });
 
@@ -6980,8 +7177,27 @@ document.addEventListener('keydown', e => {
 
 
 // Drag & drop
+const ARCHIVE_DRAG_TYPE = 'application/x-3dlens-model';
+let draggedArchiveFile = null;
+let draggedArchiveFiles = [];
 let dragCounter = 0;
 const dropOverlay = document.getElementById('drop-overlay');
+
+function clearArchiveDrag() {
+  draggedArchiveFile = null;
+  draggedArchiveFiles = [];
+  dragCounter = 0;
+  dropOverlay.classList.remove('show');
+  document.querySelectorAll('.is-dragging, .drop-target').forEach(el => {
+    el.classList.remove('is-dragging', 'drop-target');
+  });
+}
+
+function dropCollectionId(target) {
+  const id = target?.closest?.('.collection-item')?.dataset.id;
+  if (id === 'uncategorized') return null;
+  return state.collections.some(c => c.id === id) ? id : undefined;
+}
 
 window.addEventListener('dragenter', e => {
   e.preventDefault();
@@ -6992,6 +7208,7 @@ window.addEventListener('dragenter', e => {
 });
 
 window.addEventListener('dragleave', e => {
+  if (draggedArchiveFile) return;
   dragCounter--;
   if (dragCounter <= 0) {
     dragCounter = 0;
@@ -7003,8 +7220,21 @@ window.addEventListener('dragover', e => e.preventDefault());
 
 window.addEventListener('drop', async e => {
   e.preventDefault();
-  dragCounter = 0;
-  dropOverlay.classList.remove('show');
+  const collectionId = dropCollectionId(e.target);
+  const fileId = draggedArchiveFile;
+  const fileIds = draggedArchiveFiles.length ? [...draggedArchiveFiles] : (fileId ? [fileId] : []);
+  const transferredId = e.dataTransfer?.getData(ARCHIVE_DRAG_TYPE);
+  clearArchiveDrag();
+  if (state.bulkBusy) return;
+  if (fileId) {
+    if (transferredId === fileId && collectionId !== undefined) {
+      if (fileIds.length > 1) await runBulkAction('move', collectionId, fileIds);
+      else await moveFileToCollection(fileId, collectionId);
+    }
+    return;
+  }
+  // Internal drags from a different tab must never be treated as uploads.
+  if (Array.from(e.dataTransfer?.types || []).includes(ARCHIVE_DRAG_TYPE)) return;
 
   // Check for folders via DataTransferItems
   const items = e.dataTransfer.items;
@@ -7030,6 +7260,11 @@ window.addEventListener('drop', async e => {
         return;
       }
 
+      if (collectionId !== undefined) {
+        await importSTLFiles(validFiles, { collectionId });
+        return;
+      }
+
       pendingFolderFiles = validFiles;
       showFolderSummary(validFiles);
       document.getElementById('modal-folder').classList.add('show');
@@ -7038,7 +7273,8 @@ window.addEventListener('drop', async e => {
   }
 
   // Plain file drop
-  if (e.dataTransfer.files.length) importSTLFiles(e.dataTransfer.files);
+  if (e.dataTransfer.files.length) await importSTLFiles(e.dataTransfer.files,
+    collectionId !== undefined ? { collectionId } : {});
 });
 
 // Recursively walk a FileSystemEntry tree

@@ -1,0 +1,2 @@
+<?php defined('ABSPATH') || exit; get_header(); ?>
+<main id="inhoud" class="wrap content-wrap"><?php while(have_posts()): the_post(); ?><article <?php post_class('entry-content'); ?>><h1><?php the_title(); ?></h1><?php if(has_post_thumbnail()) the_post_thumbnail('large'); the_content(); wp_link_pages(); ?></article><?php if(comments_open() || get_comments_number()) comments_template(); endwhile; ?></main><?php get_footer(); ?>

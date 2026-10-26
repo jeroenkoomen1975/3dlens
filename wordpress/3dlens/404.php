@@ -1,0 +1,1 @@
+<?php defined('ABSPATH') || exit; get_header(); ?><main id="inhoud" class="wrap content-wrap"><div class="eyebrow">404</div><h1 class="post-title">Deze pagina is er niet.</h1><p>Ga terug naar het overzicht van 3DLens.</p><a class="button" href="<?php echo esc_url(home_url('/')); ?>">Naar de homepage</a></main><?php get_footer(); ?>

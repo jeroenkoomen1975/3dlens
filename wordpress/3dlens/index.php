@@ -1,0 +1,3 @@
+<?php defined('ABSPATH') || exit; get_header(); ?>
+<main id="inhoud" class="wrap content-wrap post-list"><div class="eyebrow">Van 3DLens</div><h1 class="post-title"><?php if (is_home()) echo 'Nieuws & updates'; elseif (is_search()) echo 'Zoekresultaten'; else the_archive_title(); ?></h1>
+<?php if(have_posts()): while(have_posts()): the_post(); ?><article <?php post_class(); ?>><p class="post-meta"><?php echo esc_html(get_the_date()); ?></p><h2><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2><?php the_excerpt(); ?></article><?php endwhile; ?><div class="pagination"><?php the_posts_pagination(); ?></div><?php else: ?><p>Er zijn nog geen berichten om te tonen.</p><?php endif; ?></main><?php get_footer(); ?>

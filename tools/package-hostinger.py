@@ -11,11 +11,11 @@ args = parser.parse_args()
 if args.subdomain and not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,62}', args.subdomain):
     parser.error('Invalid subdomain folder')
 root = Path(__file__).resolve().parents[1]
-private_files = ['.htaccess', 'archive.php', 'auth-view.php', 'bootstrap.php',
+private_files = ['.htaccess', 'archive.php', 'auth-view.php', 'bootstrap.php', 'release.php', 'changelog-view.php',
                  'config.example.php', 'repository.php', 'schema.sql', 'onedrive.php', 'model-storage.php', 'recovery.php', 'mail.php',
                  'migrations/002-email-reset.sql', 'vendor/phpmailer/PHPMailer.php', 'vendor/phpmailer/SMTP.php',
                  'vendor/phpmailer/Exception.php', 'vendor/phpmailer/LICENSE']
-public_files = ['.htaccess', 'api.php', 'index.php', 'login.php', 'logout.php', 'setup.php', 'storage.js',
+public_files = ['.htaccess', 'api.php', 'index.php', 'login.php', 'logout.php', 'setup.php', 'storage.js', 'changelog.php',
                 'onedrive.php', 'onedrive-callback.php', 'onedrive-migrate.php', 'recover.php',
                 'account.php', 'forgot-password.php', 'reset-password.php']
 public_prefix = 'public_html/' + (args.subdomain + '/' if args.subdomain else '')
