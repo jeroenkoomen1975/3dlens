@@ -122,7 +122,22 @@ function validated_metadata(array $input): array
         'description' => bounded_text($input['description'] ?? '', 8000, 'omschrijving'),
         'tags' => array_values($tags), 'stats' => $stats, 'thumbnail' => $thumbnail,
         'previewStatus' => $status, 'ai' => $ai, 'added' => (int) $added,
+        'modelCheck' => validated_model_check($input['modelCheck'] ?? null),
     ];
+}
+
+function validated_model_check(mixed $input): ?array
+{
+    if ($input === null) return null;
+    if (!is_array($input)) throw new HttpError(422, 'Ongeldige modelcontrole.');
+    $result = [];
+    foreach (['checked', 'triangles', 'boundaryEdges', 'nonManifoldEdges', 'windingEdges',
+        'degenerateTriangles', 'duplicateTriangles', 'invalidTriangles', 'topologySkipped'] as $key) {
+        $value = $input[$key] ?? 0;
+        if (!is_int($value) || $value < 0 || $value > 1000000000) throw new HttpError(422, 'Ongeldige modelcontrole.');
+        $result[$key] = $value;
+    }
+    return $result;
 }
 
 function file_metadata(array $row): array
@@ -222,13 +237,23 @@ function delete_records(string $store, ?string $id): void
     try {
         write_lock();
         if ($store === 'files') {
+            // Project references are removed atomically with model deletion.
+            foreach (db()->query('SELECT id, metadata FROM lens_projects')->fetchAll() as $projectRow) {
+                $project = json_decode($projectRow['metadata'], true, 32, JSON_THROW_ON_ERROR);
+                $parts = $id === null ? [] : array_values(array_filter($project['parts'], fn($part) => $part['fileId'] !== $id));
+                if (count($parts) === count($project['parts'])) continue;
+                $project['parts'] = $parts;
+                $updateProject = db()->prepare('UPDATE lens_projects SET metadata = ? WHERE id = ?');
+                $updateProject->execute([json_encode($project, JSON_THROW_ON_ERROR), $projectRow['id']]);
+            }
             $read = db()->prepare('SELECT storage_key FROM lens_files' . ($id === null ? '' : ' WHERE id = ?'));
             $read->execute($id === null ? [] : [$id]);
             foreach ($read->fetchAll() as $row) {
                 $keys[] = $row['storage_key'];
             }
         }
-        $table = $store === 'files' ? 'lens_files' : 'lens_collections';
+        $table = match ($store) { 'files' => 'lens_files', 'collections' => 'lens_collections', 'projects' => 'lens_projects',
+            default => throw new HttpError(422, 'Ongeldig opslagtype.') };
         $delete = db()->prepare('DELETE FROM ' . $table . ($id === null ? '' : ' WHERE id = ?'));
         $delete->execute($id === null ? [] : [$id]);
         db()->commit();

@@ -24,6 +24,7 @@ test('PHP/MySQL login, private downloads and storage permissions', {
   let token;
   const collectionId = randomUUID();
   const fileId = randomUUID();
+  const projectId = randomUUID();
   const stl = 'solid fixture\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid fixture\n';
   const write = async (store, metadata, binary) => {
     const body = new FormData();
@@ -39,7 +40,7 @@ test('PHP/MySQL login, private downloads and storage permissions', {
       const page = await request('index.php', {}, false);
       assert.equal(page.status, 303);
       assert.equal(page.headers.get('Location'), 'login.php');
-      for (const path of ['api.php?store=files', 'api.php?store=collections', 'api.php?store=files&id=' + fileId]) {
+      for (const path of ['api.php?store=files', 'api.php?store=collections', 'api.php?store=projects', 'api.php?store=files&id=' + fileId]) {
         const response = await request(path, {}, false);
         assert.equal(response.status, 401);
         assert.match(response.headers.get('Cache-Control'), /no-store/);
@@ -94,6 +95,17 @@ test('PHP/MySQL login, private downloads and storage permissions', {
         id: randomUUID(), name: 'evil.stl', thumbnail: 'data:image/svg+xml,<svg onload=alert(1) />',
       }, stl)).status, 422);
     });
+    await t.test('projects store quantities and notes and reject missing parts and writes without CSRF', async () => {
+      const project = {id:projectId,name:'Assembly',description:'Mount',parts:[{fileId,quantity:2,notes:'Pair'}]};
+      const response = await write('projects',project);
+      assert.equal(response.status,200);
+      assert.deepEqual((await response.json()).parts,project.parts);
+      const projects = await (await request('api.php?store=projects')).json();
+      assert.equal(projects.find(p=>p.id===projectId).description,'Mount');
+      assert.equal((await write('projects',{...project,parts:[{fileId:randomUUID(),quantity:1}]})).status,422);
+      assert.equal((await write('projects',{...project,parts:[{fileId,quantity:0}]})).status,422);
+      assert.equal((await request('api.php?store=projects&id='+projectId,{method:'DELETE'})).status,403);
+    });
     await t.test('metadata updates preserve bytes and collection deletion uncategorizes models', async () => {
       const update = await write('files', { id: fileId, name: 'fixture.stl', collectionId, description: 'Saved', tags: ['test'] });
       assert.equal(update.status, 200);
@@ -106,6 +118,9 @@ test('PHP/MySQL login, private downloads and storage permissions', {
     await t.test('deletion removes the model and logout invalidates the old session', async () => {
       assert.equal((await remove('files', fileId)).status, 200);
       assert.equal((await request('api.php?store=files&id=' + fileId)).status, 404);
+      const projects = await (await request('api.php?store=projects')).json();
+      assert.deepEqual(projects.find(p=>p.id===projectId).parts,[]);
+      assert.equal((await remove('projects',projectId)).status,200);
       const oldCookie = cookie;
       assert.equal((await request('logout.php', { method: 'POST', body: new URLSearchParams({ csrf: token }) })).status, 303);
       const oldSession = await fetch(new URL('api.php?store=files', base), { redirect: 'manual', headers: { Cookie: oldCookie } });
@@ -116,6 +131,7 @@ test('PHP/MySQL login, private downloads and storage permissions', {
       // Best effort only: remove exactly our UUIDs, never clear a library.
       await remove('files', fileId).catch(() => {});
       await remove('collections', collectionId).catch(() => {});
+      await remove('projects', projectId).catch(() => {});
     }
   }
 });

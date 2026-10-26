@@ -4,7 +4,7 @@ if (!defined('THREEDLENS_BOOTSTRAPPED')) { http_response_code(404); exit; }
 
 function app_release(): array
 {
-    return ['version' => '1.4.0', 'date' => '2026-10-26', 'date_label' => '26 oktober 2026'];
+    return ['version' => '1.5.0', 'date' => '2026-10-26', 'date_label' => '26 oktober 2026'];
 }
 
 function app_changelog(): array
@@ -12,6 +12,21 @@ function app_changelog(): array
     return [
         [
             ...app_release(),
+            'title' => 'Modelcontrole en projecten met meerdere onderdelen',
+            'changes' => [
+                'Een importrapport toont welke identieke bestanden zijn overgeslagen en verwijst naar het bestaande model, ook bij een andere bestandsnaam.',
+                'Afmetingen en een basiscontrole op open randen, niet-manifold randen, vlakrichting en ongeldige, dubbele of vlakke driehoeken staan onder Info.',
+                'STL-afmetingen worden als millimeters geïnterpreteerd, met Z als printhoogte. Bij vereenvoudigd gelezen 3MF-bestanden wordt gewaarschuwd voor onbetrouwbare schaal en plaatsing.',
+                'Maak projecten met modellen uit meerdere collecties, aantallen per onderdeel en montage- en onderdeelnotities. Hetzelfde model kan in meerdere projecten staan.',
+                'Backups bevatten projecten en modelcontroles. Bij terugzetten blijven projectonderdelen gekoppeld, ook wanneer een identiek model al bestaat.',
+            ],
+            'notes' => [
+                'Dubbelherkenning vergelijkt identieke bestandsinhoud; opnieuw geëxporteerde of geschaalde modellen worden niet geometrisch vergeleken.',
+                'Modelcontrole repareert niets en controleert geen zelfdoorsnijdingen of wanddikte. Boven 200.000 driehoeken wordt de randcontrole expliciet overgeslagen. Geslicete resinbestanden bevatten geen controleerbare mesh.',
+            ],
+        ],
+        [
+            'version' => '1.4.0', 'date' => '2026-10-26', 'date_label' => '26 oktober 2026',
             'title' => 'Meerdere modellen selecteren en organiseren',
             'changes' => [
                 'Selecteer meerdere modellen met vinkjes of Ctrl+klik (Mac: Cmd+klik). Met Alles in beeld selecteer je alle zichtbare modellen.',

@@ -15,7 +15,7 @@ try {
   if (!oneDriveScript) throw new Error('The OneDrive migration module is missing.');
   const oneDriveModule = join(temporary, 'onedrive.mjs');
   await writeFile(oneDriveModule, oneDriveScript);
-  for (const path of [modulePath, oneDriveModule, fileURLToPath(new URL('../public_html/storage.js', import.meta.url))]) {
+  for (const path of [modulePath, oneDriveModule, ...['storage.js', 'projects.js', 'model-analysis.js'].map(name => fileURLToPath(new URL('../public_html/' + name, import.meta.url)))]) {
     const result = spawnSync(process.execPath, ['--check', path], { encoding: 'utf8' });
     if (result.status !== 0) throw new Error(result.stderr || result.error?.message || 'Syntax check failed.');
   }

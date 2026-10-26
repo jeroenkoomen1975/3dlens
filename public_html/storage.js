@@ -6,7 +6,7 @@ export function createArchiveStorage({ csrf, fetchImpl = globalThis.fetch, onUna
   let cachedBytes = 0;
 
   function endpoint(store, params = {}) {
-    if (!['files', 'collections'].includes(store)) throw new Error('Ongeldig opslagtype.');
+    if (!['files', 'collections', 'projects'].includes(store)) throw new Error('Ongeldig opslagtype.');
     return 'api.php?' + new URLSearchParams({ store, ...params });
   }
 
